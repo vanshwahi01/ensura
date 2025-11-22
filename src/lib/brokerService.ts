@@ -2,13 +2,27 @@ import { ethers } from "ethers";
 import { createZGComputeNetworkBroker, ZGComputeNetworkBroker } from "@0glabs/0g-serving-broker";
 import OpenAI from "openai";
 
-// Official 0G providers (from starter kit)
+/**
+ * Official 0G Compute Network Providers
+ * From: https://docs.0g.ai/developer-hub/building-on-0g/compute-network/sdk
+ */
 export const OFFICIAL_PROVIDERS = {
   "llama-3.3-70b-instruct": "0xf07240Efa67755B5311bc75784a061eDB47165Dd",
   "deepseek-r1-70b": "0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
   "qwen2.5-vl-72b-instruct": "0x6D233D2610c32f630ED53E8a7Cbf759568041f8f"
 };
 
+/**
+ * 0G Compute Network Broker Service
+ * 
+ * Manages AI inference requests through the 0G Compute Network.
+ * Handles:
+ * - Wallet and ledger account management
+ * - Provider acknowledgment and fund transfers
+ * - AI query routing with custom system prompts
+ * - Response formatting (JSON, concise, default)
+ * - Automatic provider setup and balance management
+ */
 class BrokerService {
   private wallet: ethers.Wallet | null = null;
   private provider: ethers.JsonRpcProvider | null = null;
@@ -20,6 +34,31 @@ class BrokerService {
   constructor() {
     // Initialize on first access
     this.initPromise = this.initialize();
+  }
+
+  /**
+   * Helper to parse account balance from SDK response
+   * SDK returns either array format [address, balance, totalBalance, ...] 
+   * or object format { address, balance, totalBalance, ... }
+   */
+  private parseAccountBalance(account: any): {
+    address: string;
+    balance: bigint;
+    totalBalance: bigint;
+  } {
+    if (Array.isArray(account)) {
+      return {
+        address: account[0] || 'N/A',
+        balance: BigInt(account[1] || 0),
+        totalBalance: BigInt(account[2] || 0)
+      };
+    } else {
+      return {
+        address: account.address || 'N/A',
+        balance: account.balance || BigInt(0),
+        totalBalance: account.totalBalance || BigInt(0)
+      };
+    }
   }
 
   private async initialize(): Promise<void> {
@@ -65,19 +104,7 @@ class BrokerService {
     try {
       // Check if ledger exists
       const account = await this.broker.ledger.getLedger();
-      
-      // Parse account data (SDK returns array format)
-      // Array format: [address, balance, totalBalance, ...]
-      let balance: bigint;
-      let totalBalance: bigint;
-      
-      if (Array.isArray(account)) {
-        balance = BigInt(account[1] || 0);
-        totalBalance = BigInt(account[2] || 0);
-      } else {
-        balance = (account as any).balance || BigInt(0);
-        totalBalance = (account as any).totalBalance || BigInt(0);
-      }
+      const { balance, totalBalance } = this.parseAccountBalance(account);
 
       const balanceNum = parseFloat(ethers.formatEther(balance));
       const totalBalanceNum = parseFloat(ethers.formatEther(totalBalance));
@@ -287,18 +314,7 @@ class BrokerService {
       // Step 2: Check ledger balance and transfer funds to provider (minimum 0.1 OG required)
       try {
         const account = await this.broker.ledger.getLedger();
-        
-        // Parse account data (SDK returns array format)
-        let balance: bigint;
-        let totalBalance: bigint;
-        
-        if (Array.isArray(account)) {
-          balance = BigInt(account[1] || 0);
-          totalBalance = BigInt(account[2] || 0);
-        } else {
-          balance = (account as any).balance || BigInt(0);
-          totalBalance = (account as any).totalBalance || BigInt(0);
-        }
+        let { balance, totalBalance } = this.parseAccountBalance(account);
         
         let ledgerBalanceNum = parseFloat(ethers.formatEther(balance));
         const totalBalanceNum = parseFloat(ethers.formatEther(totalBalance));
@@ -316,14 +332,7 @@ class BrokerService {
             
             // Re-check balance after funding
             const newAccount = await this.broker.ledger.getLedger();
-            let newBalance: bigint;
-            
-            if (Array.isArray(newAccount)) {
-              newBalance = BigInt(newAccount[1] || 0);
-            } else {
-              newBalance = (newAccount as any).balance || BigInt(0);
-            }
-            
+            const { balance: newBalance } = this.parseAccountBalance(newAccount);
             const newBalanceNum = parseFloat(ethers.formatEther(newBalance));
             
             console.log(`💰 Ledger balance after funding: ${newBalanceNum.toFixed(4)} OG`);
@@ -476,23 +485,7 @@ class BrokerService {
 
     try {
       const account = await this.broker!.ledger.getLedger();
-      
-      // Handle both array and object formats from SDK
-      // Array format: [address, balance, totalBalance, ...]
-      // Object format: { address, balance, totalBalance, ... }
-      let address: string;
-      let balance: bigint;
-      let totalBalance: bigint;
-      
-      if (Array.isArray(account)) {
-        address = account[0] || 'N/A';
-        balance = BigInt(account[1] || 0);
-        totalBalance = BigInt(account[2] || 0);
-      } else {
-        address = (account as any).address || 'N/A';
-        balance = (account as any).balance || BigInt(0);
-        totalBalance = (account as any).totalBalance || BigInt(0);
-      }
+      const { address, balance, totalBalance } = this.parseAccountBalance(account);
       
       return {
         balance: ethers.formatEther(balance),
@@ -576,7 +569,10 @@ class BrokerService {
     query: string,
     options?: {
       model?: string;
-      fallbackFee?: number;
+      systemPrompt?: string;
+      responseFormat?: 'json' | 'concise' | 'default';
+      temperature?: number;
+      maxTokens?: number;
     }
   ): Promise<{
     content: string | null;
@@ -585,8 +581,7 @@ class BrokerService {
       isValid?: boolean;
       provider: string;
       chatId: string;
-      usedFallbackFee?: boolean;
-      fallbackFeeAmount?: number;
+      responseFormat?: string;
     };
   }> {
     await this.ensureInitialized();
@@ -598,8 +593,32 @@ class BrokerService {
       // Get the service metadata
       const { endpoint, model } = await this.broker!.inference.getServiceMetadata(providerAddress);
 
+      // Build messages array with optional system prompt
+      const messages: Array<{ role: string; content: string }> = [];
+      
+      // Add system prompt based on response format
+      if (options?.systemPrompt) {
+        messages.push({ role: "system", content: options.systemPrompt });
+      } else if (options?.responseFormat === 'json') {
+        messages.push({
+          role: "system",
+          content: "You are a helpful assistant that responds in valid JSON format. Always structure your responses as parseable JSON objects."
+        });
+      } else if (options?.responseFormat === 'concise') {
+        messages.push({
+          role: "system",
+          content: "You are a helpful assistant that provides concise, direct answers. Keep responses brief and to the point, avoiding unnecessary elaboration."
+        });
+      }
+      
+      // Add user query
+      messages.push({ role: "user", content: query });
+
       // Get headers for authentication (single use - generate fresh for each request)
-      const headers = await this.broker!.inference.getRequestHeaders(providerAddress, query);
+      const headers = await this.broker!.inference.getRequestHeaders(
+        providerAddress,
+        JSON.stringify(messages)
+      );
 
       // Create OpenAI client with the service URL
       const openai = new OpenAI({
@@ -615,20 +634,45 @@ class BrokerService {
         }
       });
 
+      // Build request params
+      const requestParams: any = {
+        messages,
+        model: options?.model || model,
+      };
+
+      // Add optional parameters
+      if (options?.temperature !== undefined) {
+        requestParams.temperature = options.temperature;
+      }
+      if (options?.maxTokens) {
+        requestParams.max_tokens = options.maxTokens;
+      }
+      if (options?.responseFormat === 'json') {
+        requestParams.response_format = { type: "json_object" };
+      }
+
       // Make the API request
       const completion = await openai.chat.completions.create(
-        {
-          messages: [{ role: "user", content: query }],
-          model: options?.model || model,
-        },
+        requestParams,
         {
           headers: requestHeaders,
         }
       );
 
-      // Process response
-      const content = completion.choices[0].message.content;
+      // Debug: Log the full completion response
+      console.log('🔍 Full completion response:', JSON.stringify(completion, null, 2));
+
+      // Process response - some models use reasoning_content instead of content
+      const message = completion.choices[0]?.message;
+      const content = message?.content || (message as any)?.reasoning_content || null;
       const chatId = completion.id;
+
+      console.log('📝 Extracted content:', content);
+      console.log('🆔 Chat ID:', chatId);
+      
+      if (!content) {
+        console.warn('⚠️  No content in response. Message object:', JSON.stringify(message, null, 2));
+      }
 
       // Process payment - chatId is optional for verifiable services
       try {
@@ -645,6 +689,7 @@ class BrokerService {
             isValid,
             provider: providerAddress,
             chatId,
+            responseFormat: options?.responseFormat
           }
         };
       } catch (error: any) {
@@ -664,6 +709,7 @@ class BrokerService {
             model,
             provider: providerAddress,
             chatId,
+            responseFormat: options?.responseFormat
           }
         };
       }
@@ -698,6 +744,139 @@ class BrokerService {
     } catch (error: any) {
       throw new Error(`Failed to request refund: ${error.message}`);
     }
+  }
+
+  /**
+   * Get comprehensive diagnostics about the broker state
+   */
+  async getDiagnostics(): Promise<any> {
+    await this.ensureInitialized();
+
+    if (!this.broker || !this.wallet) {
+      throw new Error('Broker not initialized');
+    }
+
+    const sanitize = (obj: any): any => {
+      if (typeof obj === 'bigint') {
+        return obj.toString();
+      } else if (Array.isArray(obj)) {
+        return obj.map(sanitize);
+      } else if (obj && typeof obj === 'object') {
+        const result: any = {};
+        for (const key in obj) {
+          result[key] = sanitize(obj[key]);
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    try {
+      // Get ledger account
+      const ledger = await this.broker.ledger.getLedger();
+      const ledgerData = sanitize(ledger);
+
+      // Get provider accounts
+      const providers = [
+        { name: "llama-3.3-70b-instruct", address: OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"] },
+        { name: "deepseek-r1-70b", address: OFFICIAL_PROVIDERS["deepseek-r1-70b"] },
+        { name: "qwen2.5-vl-72b-instruct", address: OFFICIAL_PROVIDERS["qwen2.5-vl-72b-instruct"] }
+      ];
+
+      const providerAccounts: any[] = [];
+      for (const prov of providers) {
+        try {
+          const account = await this.broker.ledger.getAccount(prov.address, "inference");
+          const accountData = sanitize(account);
+          providerAccounts.push({
+            provider: prov.name,
+            address: prov.address,
+            account: accountData
+          });
+        } catch (error: any) {
+          providerAccounts.push({
+            provider: prov.name,
+            address: prov.address,
+            error: error.message
+          });
+        }
+      }
+
+      return {
+        walletAddress: this.wallet.address,
+        ledger: ledgerData,
+        providerAccounts,
+        interpretation: {
+          totalBalance: "Total funds in the ledger system",
+          balance: "Available balance (unlocked and ready to use)",
+          difference: "If totalBalance > balance, funds may be locked or allocated"
+        },
+        recommendations: ledgerData.balance === '0' && parseFloat(ledgerData.totalBalance || '0') > 0
+          ? [
+              "Your funds exist in the ledger but show as unavailable (balance=0, totalBalance>0)",
+              "This usually means funds are in a locked/allocated state",
+              "Possible causes: 1) Pending transaction, 2) Funds allocated to provider but not yet transferred, 3) SDK state issue",
+              "Try getting more tokens from https://faucet.0g.ai to continue"
+            ]
+          : []
+      };
+    } catch (error: any) {
+      throw new Error(`Diagnostic failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get balances allocated to providers
+   */
+  async getProviderBalances(): Promise<{
+    balances: Array<{
+      name: string;
+      address: string;
+      balance: string;
+      balanceOG: string;
+      canRefund: boolean;
+    }>;
+    message: string;
+  }> {
+    await this.ensureInitialized();
+
+    if (!this.broker) {
+      throw new Error('Broker not initialized');
+    }
+
+    const providers = [
+      { name: "llama-3.3-70b-instruct", address: OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"] },
+      { name: "deepseek-r1-70b", address: OFFICIAL_PROVIDERS["deepseek-r1-70b"] },
+      { name: "qwen2.5-vl-72b-instruct", address: OFFICIAL_PROVIDERS["qwen2.5-vl-72b-instruct"] }
+    ];
+
+    const balances: any[] = [];
+
+    for (const prov of providers) {
+      try {
+        const account = await this.broker.ledger.getAccount(prov.address, "inference");
+        const balance = (account as any).balance || (account as any)[0] || BigInt(0);
+        
+        if (balance > 0) {
+          balances.push({
+            name: prov.name,
+            address: prov.address,
+            balance: ethers.formatEther(balance),
+            balanceOG: `${ethers.formatEther(balance)} OG`,
+            canRefund: true
+          });
+        }
+      } catch (error: any) {
+        // Provider has no balance, skip
+      }
+    }
+
+    return {
+      balances,
+      message: balances.length > 0 
+        ? 'You have funds allocated to providers that can be refunded!' 
+        : 'No funds found with providers'
+    };
   }
 }
 

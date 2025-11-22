@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { brokerService } from '@/lib/brokerService';
+import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,9 +91,24 @@ export async function POST(request: NextRequest) {
           message: refundResult
         });
 
+      case 'diagnose':
+        const diagnostic = await brokerService.getDiagnostics();
+        return NextResponse.json({
+          success: true,
+          ...diagnostic
+        });
+
+      case 'checkProviderBalances':
+        const providerBalances = await brokerService.getProviderBalances();
+        return NextResponse.json({
+          success: true,
+          providerBalances: providerBalances.balances,
+          message: providerBalances.message
+        });
+
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Valid actions: getWalletInfo, checkBalance, acknowledgeProvider, transferToProvider, addFunds, addLedger, listServices, refund' },
+          { error: 'Invalid action. Valid actions: getWalletInfo, checkBalance, acknowledgeProvider, transferToProvider, addFunds, addLedger, listServices, refund, diagnose, checkProviderBalances' },
           { status: 400 }
         );
     }
