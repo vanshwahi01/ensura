@@ -18,23 +18,6 @@ export default function Home() {
   const [showContract, setShowContract] = useState(false)
   const [showAcceptModal, setShowAcceptModal] = useState(false)
   const [currentStage, setCurrentStage] = useState<ProgressStage>({ stage: 0, message: '', progress: 0 })
-
-  // Mock contract data
-  const mockContract = {
-    policyNumber: 'HLF-2025-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-    coverage: 'Comprehensive Life Insurance',
-    premium: '$249/month',
-    coverageAmount: '$500,000',
-    terms: [
-      'Coverage begins immediately upon acceptance',
-      'No medical examination required for approved applicants',
-      'Beneficiaries receive full payout within 30 days of claim',
-      'Policy includes accidental death and dismemberment coverage',
-      'Premium rates locked for 10 years',
-      'Option to increase coverage at life milestones'
-    ]
-  }
-
   const [apiResult, setApiResult] = useState('')
 
   // API call with progress updates
@@ -69,7 +52,8 @@ export default function Home() {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
-          setApiResult(JSON.stringify(data, null, 2))
+          // Extract just the content from the response
+          setApiResult(data.response?.content || JSON.stringify(data, null, 2))
         } else {
           const text = await response.text()
           setApiResult(`Received non-JSON response:\n${text}`)
@@ -306,51 +290,15 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* API Result */}
+                {/* Insurance Policy Quote */}
                 <div className="space-y-6 mb-8">
-                  <div className="bg-teal/5 rounded-lg p-6 border border-teal/10">
+                  <div className="bg-teal/5 rounded-lg p-8 border border-teal/10">
                     <h3 className="text-lg font-semibold text-navy mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                      API Response
+                      Your Insurance Policy Quote
                     </h3>
-                    <pre className="bg-white p-4 rounded text-sm overflow-auto max-h-96 text-gray-700 font-mono">
+                    <div className="bg-white p-6 rounded-lg text-gray-700 leading-relaxed whitespace-pre-wrap">
                       {apiResult}
-                    </pre>
-                  </div>
-                  
-                  <div className="bg-teal/5 rounded-lg p-6 border border-teal/10">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Policy Number</p>
-                        <p className="text-lg font-mono text-navy">{mockContract.policyNumber}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Coverage Type</p>
-                        <p className="text-lg text-navy font-medium">{mockContract.coverage}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Monthly Premium</p>
-                        <p className="text-2xl text-coral font-bold">{mockContract.premium}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Coverage Amount</p>
-                        <p className="text-2xl text-teal font-bold">{mockContract.coverageAmount}</p>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Terms and Conditions */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-navy mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                      Terms & Conditions
-                    </h3>
-                    <ul className="space-y-3">
-                      {mockContract.terms.map((term, index) => (
-                        <li key={index} className="flex gap-3 text-gray-700">
-                          <span className="text-teal font-bold mt-1">•</span>
-                          <span className="leading-relaxed">{term}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 </div>
 
@@ -464,9 +412,9 @@ export default function Home() {
           <div className="bg-teal/5 rounded-lg p-4 border border-teal/10">
             <p className="text-sm text-gray-600 mb-2">By accepting, you agree to:</p>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Monthly premium of <strong className="text-teal">{mockContract.premium}</strong></li>
-              <li>• Coverage amount of <strong className="text-teal">{mockContract.coverageAmount}</strong></li>
-              <li>• All terms and conditions outlined in the contract</li>
+              <li>• All terms and conditions outlined in the policy quote</li>
+              <li>• The coverage details and premium specified above</li>
+              <li>• Legal binding of this insurance contract</li>
             </ul>
           </div>
         </ModalBody>

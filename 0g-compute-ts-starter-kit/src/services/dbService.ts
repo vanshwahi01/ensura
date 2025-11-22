@@ -17,3 +17,9 @@ export const getAllQueryLogs = async () => {
   const result = await query(sql);
   return result.rows;
 };
+
+export const getAllResponseContents = async () => {
+  const sql = 'SELECT response FROM query_logs ORDER BY created_at DESC';
+  const result = await query(sql);
+  return result.rows.map(row => row.response);
+};

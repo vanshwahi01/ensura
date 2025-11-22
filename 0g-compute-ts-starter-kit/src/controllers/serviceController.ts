@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { brokerService } from '../services/brokerService';
-import { saveQueryLog, getAllQueryLogs } from '../services/dbService';
+import { saveQueryLog, getAllQueryLogs, getAllResponseContents } from '../services/dbService';
 import { randomUUID } from 'crypto';
 
 /**
@@ -415,6 +415,34 @@ export const getQueryLogs = async (req: Request, res: Response) => {
       success: true,
       count: logs.length,
       logs
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /services/responses:
+ *   get:
+ *     summary: Get all response contents from database
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: List of all response contents
+ *       500:
+ *         description: Server error
+ */
+export const getResponses = async (req: Request, res: Response) => {
+  try {
+    const responses = await getAllResponseContents();
+    return res.status(200).json({
+      success: true,
+      count: responses.length,
+      responses
     });
   } catch (error: any) {
     return res.status(500).json({
