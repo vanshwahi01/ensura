@@ -35,8 +35,10 @@ export default function Home() {
     ]
   }
 
-  // Mock backend call with progress updates
-  const mockBackendCall = async () => {
+  const [apiResult, setApiResult] = useState('')
+
+  // API call with progress updates
+  const callBackend = async () => {
     const stages = [
       { stage: 1, message: 'Analyzing your insurance needs...', progress: 33, delay: 6000 },
       { stage: 2, message: 'Matching with best coverage options...', progress: 66, delay: 7000 },
@@ -48,8 +50,35 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, stage.delay))
     }
 
-    // Simulate completion - show contract
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Call the API
+    try {
+      const response = await fetch('http://localhost:4000/api/services/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerAddress: "0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+          query: message,
+          fallbackFee: 0
+        })
+      })
+      
+      if (!response.ok) {
+        const text = await response.text()
+        setApiResult(`Error ${response.status}: ${text}`)
+      } else {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json()
+          setApiResult(JSON.stringify(data, null, 2))
+        } else {
+          const text = await response.text()
+          setApiResult(`Received non-JSON response:\n${text}`)
+        }
+      }
+    } catch (error) {
+      setApiResult('Error: ' + (error as Error).message)
+    }
+
     setIsLoading(false)
     setShowContract(true)
   }
@@ -59,7 +88,7 @@ export default function Home() {
     if (!message.trim()) return
     
     setIsLoading(true)
-    mockBackendCall()
+    callBackend()
   }
 
   const handleAcceptClick = () => {
@@ -283,8 +312,17 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Contract Details */}
+                {/* API Result */}
                 <div className="space-y-6 mb-8">
+                  <div className="bg-teal/5 rounded-lg p-6 border border-teal/10">
+                    <h3 className="text-lg font-semibold text-navy mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      API Response
+                    </h3>
+                    <pre className="bg-white p-4 rounded text-sm overflow-auto max-h-96 text-gray-700 font-mono">
+                      {apiResult}
+                    </pre>
+                  </div>
+                  
                   <div className="bg-teal/5 rounded-lg p-6 border border-teal/10">
                     <div className="grid grid-cols-2 gap-6">
                       <div>
