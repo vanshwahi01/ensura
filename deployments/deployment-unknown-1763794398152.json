@@ -1,0 +1,10 @@
+{
+  "network": "unknown",
+  "chainId": "114",
+  "contract": "InsuranceContract",
+  "address": "0xeD7b704Cba2eb97A650D4B76516CFEDCF202482c",
+  "fdcVerification": "0x3a1b94f0e4241e8c9c72de2c201dba04f45847c8",
+  "deployer": "0x1290881f1d8917Cf3f61A95BEB9999dcECD0231d",
+  "timestamp": "2025-11-22T06:53:17.901Z",
+  "blockNumber": 24265944
+}

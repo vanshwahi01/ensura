@@ -1,10 +1,10 @@
 import { defineConfig } from "hardhat/config";
-import HardhatIgnitionEthersPlugin from "@nomicfoundation/hardhat-ignition-ethers";
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-ignition-ethers";
 import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default defineConfig({
-  plugins: [HardhatIgnitionEthersPlugin],
   solidity: {
     version: "0.8.20",
     settings: {
@@ -29,7 +29,7 @@ export default defineConfig({
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 114
     },
-    // Local simulated network
+    // Local Hardhat network
     hardhat: {
       type: "edr-simulated",
       chainId: 31337

@@ -11,9 +11,14 @@
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",
     "hardhat:deploy:coston2": "hardhat run scripts/deploy.ts --network coston2",
-    "hardhat:deploy:flare": "hardhat run scripts/deploy.ts --network flare"
+    "hardhat:deploy:flare": "hardhat run scripts/deploy.ts --network flare",
+    "hardhat:deploy:fdc:coston2": "hardhat run scripts/deploy-fdc.ts --network coston2",
+    "hardhat:deploy:fdc:flare": "hardhat run scripts/deploy-fdc.ts --network flare",
+    "hardhat:fdc-example": "hardhat run scripts/example-fdc-workflow.ts --network coston2"
   },
   "dependencies": {
+    "@flarenetwork/flare-periphery-contracts": "^0.1.38",
+    "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
     "@openzeppelin/contracts": "^5.0.0",
     "ethers": "^6.9.0",
     "next": "16.0.3",
