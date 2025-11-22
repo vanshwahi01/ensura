@@ -1,42 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
-import { createZGComputeNetworkBroker } from '@0glabs/0g-serving-broker';
-
-async function getBroker() {
-  const provider = new ethers.JsonRpcProvider(
-    process.env.OG_NETWORK_RPC || 'https://evmrpc-testnet.0g.ai'
-  );
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-  return await createZGComputeNetworkBroker(wallet);
-}
+import { brokerService } from '@/lib/brokerService';
 
 export async function POST(request: NextRequest) {
   try {
     const { action, providerAddress, amount } = await request.json();
-    const broker = await getBroker();
 
     switch (action) {
       case 'getWalletInfo':
-        const provider = new ethers.JsonRpcProvider(
-          process.env.OG_NETWORK_RPC || 'https://evmrpc-testnet.0g.ai'
-        );
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-        const walletAddress = wallet.address;
-        const walletBalance = await provider.getBalance(walletAddress);
+        const walletInfo = await brokerService.getWalletInfo();
         return NextResponse.json({
           success: true,
-          address: walletAddress,
-          balance: ethers.formatEther(walletBalance),
-          balanceOG: ethers.formatEther(walletBalance) + ' OG',
-          network: process.env.OG_NETWORK_RPC || 'https://evmrpc-testnet.0g.ai'
+          ...walletInfo
         });
 
       case 'checkBalance':
-        const account = await broker.ledger.getLedger();
-        return NextResponse.json({ 
+        const balance = await brokerService.getBalance();
+        return NextResponse.json({
           success: true,
-          ledgerBalance: ethers.formatEther(account.balance),
-          totalBalance: ethers.formatEther(account.totalBalance)
+          ledgerBalance: balance.balance,
+          totalBalance: balance.totalBalance,
+          ledgerAddress: balance.address
         });
 
       case 'acknowledgeProvider':
@@ -46,61 +29,82 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        const tx = await broker.inference.acknowledgeProviderSigner(
-          providerAddress
-        );
-        return NextResponse.json({ 
-          success: true, 
-          message: 'Provider acknowledged',
-          transaction: tx
+        const ackResult = await brokerService.acknowledgeProvider(providerAddress);
+        return NextResponse.json({
+          success: true,
+          message: ackResult
         });
 
-        case 'transferToProvider':
-            if (!providerAddress) {
-              return NextResponse.json(
-                { error: 'providerAddress required' },
-                { status: 400 }
-              );
-            }
-            const transferAmt = amount || 2;
-            // Transfer from your ledger balance to the provider's account
-            const transferTx = await broker.ledger.transferFund(
-              providerAddress,
-              'inference',
-              ethers.parseEther(transferAmt.toString())
-            );
-            return NextResponse.json({
-              success: true,
-              message: `Transferred ${transferAmt} OG to provider`,
-              transaction: transferTx
-            });
-
-        case 'addFunds':
-            const depositAmount = amount || 2;
-            await broker.ledger.depositFund(depositAmount); // Use depositFund per official docs
-            return NextResponse.json({
-              success: true,
-              message: `Added ${depositAmount} OG to ledger`
-            });
-
-        case 'addLedger':
-        const addAmount = amount || 100;
-        await broker.ledger.addLedger(addAmount); // For initial account creation
+      case 'transferToProvider':
+        if (!providerAddress) {
+          return NextResponse.json(
+            { error: 'providerAddress required' },
+            { status: 400 }
+          );
+        }
+        const transferAmt = amount || 0.1;
+        const transferResult = await brokerService.transferFundsToProvider(
+          providerAddress,
+          transferAmt
+        );
         return NextResponse.json({
-            success: true,
-            message: `Created ledger with ${addAmount} OG`
+          success: true,
+          message: transferResult,
+          note: 'Each provider requires minimum 0.1 OG to start (1.5 OG recommended)'
+        });
+
+      case 'addFunds':
+        const depositAmount = amount || 0.1;
+        const depositResult = await brokerService.depositFunds(depositAmount);
+        return NextResponse.json({
+          success: true,
+          message: depositResult
+        });
+
+      case 'addLedger':
+        const addAmount = amount || 0.5;
+        const addResult = await brokerService.addFundsToLedger(addAmount);
+        return NextResponse.json({
+          success: true,
+          message: addResult,
+          note: 'Transaction submitted. Balance may take a few seconds to reflect.'
+        });
+
+      case 'listServices':
+        const services = await brokerService.listServices();
+        return NextResponse.json({
+          success: true,
+          services,
+          count: services.length
+        });
+
+      case 'refund':
+        if (!providerAddress || !amount) {
+          return NextResponse.json(
+            { error: 'providerAddress and amount required for refund' },
+            { status: 400 }
+          );
+        }
+        const refundResult = await brokerService.requestRefund(providerAddress, amount);
+        return NextResponse.json({
+          success: true,
+          message: refundResult
         });
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action' },
+          { error: 'Invalid action. Valid actions: getWalletInfo, checkBalance, acknowledgeProvider, transferToProvider, addFunds, addLedger, listServices, refund' },
           { status: 400 }
         );
     }
   } catch (error: any) {
-    console.error('Setup Error:', error);
+    console.error('❌ Setup Error:', error);
     return NextResponse.json(
-      { error: 'Setup failed', details: error.message },
+      {
+        error: 'Setup failed',
+        message: error.message,
+        details: error.stack
+      },
       { status: 500 }
     );
   }
