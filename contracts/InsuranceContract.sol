@@ -18,6 +18,11 @@ contract InsuranceContract is ReentrancyGuard {
         bytes32 underwritingDataHash; // Hash of FDC-verified underwriting data
     }
 
+    // Data structure for data transporation
+    struct DataTransportObject {
+    uint256 premium;
+}
+
     // Data structure for an offer
     struct Offer {
         uint256 quoteRequestId;
@@ -136,24 +141,23 @@ contract InsuranceContract is ReentrancyGuard {
 
         // TODO: Get premium out of response body
         // Extract and hash the risk assessment data
-        bytes32 assessmentHash = keccak256(abi.encode(proof.data.responseBody));
+        DataTransportObject memory dto = abi.decode(data.data.responseBody.abiEncodedData, (DataTransportObject));
+        // bytes32 assessmentHash = keccak256(abi.encode(proof.data.responseBody));
 
         offerId = offers.length;
         offers.push(Offer({
             quoteRequestId: quoteRequestId,
             provider: msg.sender,
-            premium: premium,
+            premium: dto.premium,
             coverageAmount: coverageAmount,
             validUntil: validUntil,
             accepted: false,
             premiumPaid: false,
             coverageFunded: false,
             payoutClaimed: false,
-            riskAssessmentHash: assessmentHash
         }));
         
         emit OfferMade(offerId, quoteRequestId, msg.sender, premium, coverageAmount, validUntil);
-        emit RiskAssessmentVerified(offerId, assessmentHash);
     }
 
     // Function: provider deposits funds to fund coverage
