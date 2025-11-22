@@ -134,6 +134,7 @@ contract InsuranceContract is ReentrancyGuard {
             "FDC: Risk assessment verification failed"
         );
 
+        // TODO: Get premium out of response body
         // Extract and hash the risk assessment data
         bytes32 assessmentHash = keccak256(abi.encode(proof.data.responseBody));
 
