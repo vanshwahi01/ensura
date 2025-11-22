@@ -11,5 +11,6 @@ router.post('/acknowledge-provider', serviceController.acknowledgeProvider);
 router.post('/transfer-to-provider', serviceController.transferToProvider);
 router.get('/logs', serviceController.getQueryLogs);
 router.get('/responses', serviceController.getResponses);
+router.get('/response/:transactionId', serviceController.getResponseByTransactionId);
 
 export default router; 

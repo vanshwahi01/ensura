@@ -23,3 +23,9 @@ export const getAllResponseContents = async () => {
   const result = await query(sql);
   return result.rows.map(row => row.response);
 };
+
+export const getQueryLogById = async (id: number) => {
+  const sql = 'SELECT * FROM query_logs WHERE id = $1';
+  const result = await query(sql, [id]);
+  return result.rows[0];
+};

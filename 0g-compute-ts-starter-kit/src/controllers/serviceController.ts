@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { brokerService } from '../services/brokerService';
-import { saveQueryLog, getAllQueryLogs, getAllResponseContents } from '../services/dbService';
+import { saveQueryLog, getAllQueryLogs, getAllResponseContents, getQueryLogById } from '../services/dbService';
 import { randomUUID } from 'crypto';
 
 /**
@@ -170,9 +170,11 @@ export const sendQuery = async (req: Request, res: Response) => {
     const chatId = serializedResult.metadata.chatId;
     
     // Save to database
+    let transactionId = null;
     try {
       const responseContent = serializedResult?.content || JSON.stringify(serializedResult);
-      await saveQueryLog(chatId, query, responseContent);
+      const savedLog = await saveQueryLog(chatId, query, responseContent);
+      transactionId = savedLog.id;
     } catch (dbError) {
       console.error('Database save error:', dbError);
       // Continue even if DB save fails
@@ -180,6 +182,7 @@ export const sendQuery = async (req: Request, res: Response) => {
     
     return res.status(200).json({
       success: true,
+      transactionId: transactionId,
       response: serializedResult
     });
   } catch (error: any) {
@@ -443,6 +446,72 @@ export const getResponses = async (req: Request, res: Response) => {
       success: true,
       count: responses.length,
       responses
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /services/response/{transactionId}:
+ *   get:
+ *     summary: Get a specific response by transaction ID
+ *     tags: [Services]
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The transaction ID to retrieve
+ *     responses:
+ *       200:
+ *         description: Query log with response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 log:
+ *                   type: object
+ *       400:
+ *         description: Invalid transaction ID
+ *       404:
+ *         description: Transaction not found
+ *       500:
+ *         description: Server error
+ */
+export const getResponseByTransactionId = async (req: Request, res: Response) => {
+  try {
+    const { transactionId } = req.params;
+    
+    // Validate transaction ID
+    const id = parseInt(transactionId);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid transaction ID. Must be a positive number.'
+      });
+    }
+    
+    const log = await getQueryLogById(id);
+    
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        error: `Transaction with ID ${id} not found`
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      log: convertBigIntToString(log)
     });
   } catch (error: any) {
     return res.status(500).json({
