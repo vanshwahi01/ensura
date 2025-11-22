@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.transferToProvider = exports.acknowledgeProvider = exports.settleFee = exports.sendQuery = exports.listServices = void 0;
+exports.getResponses = exports.getQueryLogs = exports.transferToProvider = exports.acknowledgeProvider = exports.settleFee = exports.sendQuery = exports.listServices = void 0;
 const brokerService_1 = require("../services/brokerService");
+const dbService_1 = require("../services/dbService");
 /**
  * Helper function to convert BigInt values to strings in an object
  */
@@ -151,6 +152,17 @@ const sendQuery = async (req, res) => {
         const result = await brokerService_1.brokerService.sendQuery(providerAddress, query, parsedFallbackFee);
         // Convert BigInt values to strings
         const serializedResult = convertBigIntToString(result);
+        // Use chatId from the provider response
+        const chatId = serializedResult.metadata.chatId;
+        // Save to database
+        try {
+            const responseContent = serializedResult?.content || JSON.stringify(serializedResult);
+            await (0, dbService_1.saveQueryLog)(chatId, query, responseContent);
+        }
+        catch (dbError) {
+            console.error('Database save error:', dbError);
+            // Continue even if DB save fails
+        }
         return res.status(200).json({
             success: true,
             response: serializedResult
@@ -360,3 +372,61 @@ const transferToProvider = async (req, res) => {
     }
 };
 exports.transferToProvider = transferToProvider;
+/**
+ * @swagger
+ * /services/logs:
+ *   get:
+ *     summary: Get all query logs from database
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: List of all query logs
+ *       500:
+ *         description: Server error
+ */
+const getQueryLogs = async (req, res) => {
+    try {
+        const logs = await (0, dbService_1.getAllQueryLogs)();
+        return res.status(200).json({
+            success: true,
+            count: logs.length,
+            logs
+        });
+    }
+    catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+};
+exports.getQueryLogs = getQueryLogs;
+/**
+ * @swagger
+ * /services/responses:
+ *   get:
+ *     summary: Get all response contents from database
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: List of all response contents
+ *       500:
+ *         description: Server error
+ */
+const getResponses = async (req, res) => {
+    try {
+        const responses = await (0, dbService_1.getAllResponseContents)();
+        return res.status(200).json({
+            success: true,
+            count: responses.length,
+            responses
+        });
+    }
+    catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+};
+exports.getResponses = getResponses;

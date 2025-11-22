@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "0g-compute-ts-starter-kit"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=0g-compute-ts-starter-kit && npm run build --workspace=frontend",
+    "start": "npm run start --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",
     "hardhat:deploy:coston2": "hardhat run scripts/deploy.ts --network coston2",
