@@ -1,8 +1,10 @@
 import { defineConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-ethers";
+import HardhatIgnitionEthersPlugin from "@nomicfoundation/hardhat-ignition-ethers";
+import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default defineConfig({
+  plugins: [HardhatIgnitionEthersPlugin],
   solidity: {
     version: "0.8.20",
     settings: {
