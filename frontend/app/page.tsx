@@ -157,62 +157,108 @@ export default function Home() {
         )}
 
         {isLoading && (
-          // Loading Progress View
+          // Loading View with Video
           <div className="space-y-6 animate-scale-in">
             <div className="relative">
               {/* Decorative corner elements */}
-              <div className="absolute -top-4 -left-4 w-8 h-8 border-l-2 border-t-2 border-teal/30" />
-              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
+              <div className="absolute -top-4 -left-4 w-8 h-8 border-l-2 border-t-2 border-teal/30 z-10" />
+              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30 z-10" />
               
-              <div className="bg-white/60 backdrop-blur-md rounded-2xl p-12 shadow-2xl border border-teal/10">
-                <div className="space-y-8">
-                  {/* Progress Bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className="h-full transition-all duration-1000 ease-out"
-                      style={{ width: `${currentStage.progress}%`, backgroundColor: 'var(--teal)' }}
-                    />
-                  </div>
-
-                  {/* Three Stage Indicators */}
-                  <div className="flex justify-between gap-4">
-                    {[1, 2, 3].map((stage) => (
-                      <div 
-                        key={stage}
-                        className="flex-1 text-center"
-                      >
-                        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-all duration-500 ${
-                          currentStage.stage >= stage 
-                            ? 'bg-teal text-white scale-110' 
-                            : 'bg-gray-200 text-gray-400'
-                        }`}>
-                          {currentStage.stage > stage ? (
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : currentStage.stage === stage ? (
-                            <Loader2 className="w-8 h-8 animate-spin" />
-                          ) : (
-                            <span className="text-2xl font-bold">{stage}</span>
-                          )}
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl border border-teal/10">
+                <div className="grid grid-cols-2 gap-0">
+                  {/* Progress Section - Left */}
+                  <div className="p-12 bg-white/90 flex flex-col justify-center">
+                    <div className="space-y-8">
+                      {/* Progress Bar */}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wider">
+                          Processing Your Request
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className="h-full transition-all duration-1000 ease-out"
+                            style={{ width: `${currentStage.progress}%`, backgroundColor: 'var(--teal)' }}
+                          />
                         </div>
-                        <p className={`text-sm font-medium transition-colors duration-300 ${
-                          currentStage.stage >= stage ? 'text-teal' : 'text-gray-400'
-                        }`}>
-                          Stage {stage}
+                      </div>
+
+                      {/* Three Stage Indicators */}
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((stage) => (
+                          <div 
+                            key={stage}
+                            className="flex items-center gap-4"
+                          >
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
+                              currentStage.stage >= stage 
+                                ? 'bg-teal text-white scale-110' 
+                                : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {currentStage.stage > stage ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : currentStage.stage === stage ? (
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                              ) : (
+                                <span className="text-lg font-bold">{stage}</span>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className={`text-sm font-semibold transition-colors duration-300 ${
+                                currentStage.stage >= stage ? 'text-teal' : 'text-gray-400'
+                              }`}>
+                                Stage {stage}
+                              </p>
+                              {currentStage.stage === stage && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {currentStage.message}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Current Status Message */}
+                      <div className="pt-4 border-t border-gray-200">
+                        <p 
+                          className="text-base text-gray-700 font-medium animate-pulse"
+                          style={{ fontFamily: "'Outfit', sans-serif" }}
+                        >
+                          {currentStage.message}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Please wait while we process your information...
                         </p>
                       </div>
-                    ))}
+                    </div>
                   </div>
 
-                  {/* Current Status Message */}
-                  <div className="text-center py-6">
-                    <p 
-                      className="text-xl text-gray-700 font-medium animate-pulse"
-                      style={{ fontFamily: "'Outfit', sans-serif" }}
+                  {/* Video Section - Right */}
+                  <div className="relative bg-black aspect-video flex items-center justify-center">
+                    <video
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
                     >
-                      {currentStage.message}
-                    </p>
+                      <source src="/loading-video.mp4" type="video/mp4" />
+                      <source src="/loading-video.webm" type="video/webm" />
+                      {/* Fallback message */}
+                      <div className="flex items-center justify-center h-full text-white">
+                        <p className="text-center px-4">
+                          Video not available.<br/>
+                          <span className="text-sm text-gray-400">Place your video as /public/loading-video.mp4</span>
+                        </p>
+                      </div>
+                    </video>
+                    
+                    {/* Video Label */}
+                    <div className="absolute bottom-4 right-4 bg-black/70 px-3 py-1 rounded-md">
+                      <p className="text-white text-sm font-semibold">Loading...</p>
+                    </div>
                   </div>
                 </div>
               </div>
