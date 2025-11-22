@@ -265,23 +265,17 @@ export default function Home() {
                   </div>
 
                   {/* Video Section - Right */}
-                  <div className="relative bg-black aspect-video flex items-center justify-center">
+                  <div className="relative bg-black flex items-center justify-center min-h-[500px]">
                     <video
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover absolute inset-0"
                       autoPlay
                       loop
                       muted
                       playsInline
+                      key="loading-video"
                     >
                       <source src="/loading-video.mp4" type="video/mp4" />
-                      <source src="/loading-video.webm" type="video/webm" />
-                      {/* Fallback message */}
-                      <div className="flex items-center justify-center h-full text-white">
-                        <p className="text-center px-4">
-                          Video not available.<br/>
-                          <span className="text-sm text-gray-400">Place your video as /public/loading-video.mp4</span>
-                        </p>
-                      </div>
+                      Your browser does not support the video tag.
                     </video>
                   </div>
                 </div>

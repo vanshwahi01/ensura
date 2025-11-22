@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { brokerService } from '../services/brokerService';
+import { saveQueryLog, getAllQueryLogs } from '../services/dbService';
+import { randomUUID } from 'crypto';
 
 /**
  * Helper function to convert BigInt values to strings in an object
@@ -163,6 +165,18 @@ export const sendQuery = async (req: Request, res: Response) => {
     
     // Convert BigInt values to strings
     const serializedResult = convertBigIntToString(result);
+    
+    // Use chatId from the provider response
+    const chatId = serializedResult.metadata.chatId;
+    
+    // Save to database
+    try {
+      const responseContent = serializedResult?.content || JSON.stringify(serializedResult);
+      await saveQueryLog(chatId, query, responseContent);
+    } catch (dbError) {
+      console.error('Database save error:', dbError);
+      // Continue even if DB save fails
+    }
     
     return res.status(200).json({
       success: true,
@@ -373,6 +387,34 @@ export const transferToProvider = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: result
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /services/logs:
+ *   get:
+ *     summary: Get all query logs from database
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: List of all query logs
+ *       500:
+ *         description: Server error
+ */
+export const getQueryLogs = async (req: Request, res: Response) => {
+  try {
+    const logs = await getAllQueryLogs();
+    return res.status(200).json({
+      success: true,
+      count: logs.length,
+      logs
     });
   } catch (error: any) {
     return res.status(500).json({

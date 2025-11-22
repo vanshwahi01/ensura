@@ -14,6 +14,7 @@
   "dependencies": {
     "@0glabs/0g-serving-broker": "0.5.4",
     "@types/crypto-js": "^4.2.2",
+    "@types/pg": "^8.15.6",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
@@ -22,6 +23,7 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "openai": "^4.28.0",
+    "pg": "^8.16.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
   },
