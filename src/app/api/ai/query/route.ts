@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const err = error as Error;
     console.error('❌ Query Error:', err);
-    
+
     // Handle specific errors with helpful messages
     if (err.message?.includes('acknowledge')) {
       return NextResponse.json(
