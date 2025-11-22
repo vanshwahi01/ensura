@@ -1,5 +1,5 @@
 {
-  "name": "0g-compute-starter-kit",
+  "name": "backend",
   "version": "1.0.0",
   "description": "REST API starter kit for interacting with the 0G Compute Network",
   "main": "dist/index.js",
