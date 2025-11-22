@@ -254,11 +254,6 @@ export default function Home() {
                         </p>
                       </div>
                     </video>
-                    
-                    {/* Video Label */}
-                    <div className="absolute bottom-4 right-4 bg-black/70 px-3 py-1 rounded-md">
-                      <p className="text-white text-sm font-semibold">Loading...</p>
-                    </div>
                   </div>
                 </div>
               </div>
