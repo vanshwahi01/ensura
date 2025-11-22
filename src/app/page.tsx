@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import { Button } from '@/app/components/ui/button'
+import { Input } from '@/app/components/ui/input'
+import { Select } from '@/app/components/ui/select'
 import { Textarea } from '@/app/components/ui/textarea'
+import { FileUpload } from '@/app/components/ui/fileupload'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/app/components/ui/modal'
 import { Shield, Heart, Users, Loader2, CheckCircle2 } from 'lucide-react'
 
@@ -12,8 +15,28 @@ interface ProgressStage {
   progress: number
 }
 
+interface FormData {
+  firstName: string
+  lastName: string
+  age: string
+  nationality: string
+  insuranceType: string
+  driversLicense: File | null
+  passport: File | null
+  additionalInfo: string
+}
+
 export default function Home() {
-  const [message, setMessage] = useState('')
+  const [formData, setFormData] = useState<FormData>({
+    firstName: '',
+    lastName: '',
+    age: '',
+    nationality: '',
+    insuranceType: '',
+    driversLicense: null,
+    passport: null,
+    additionalInfo: ''
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [showContract, setShowContract] = useState(false)
   const [showAcceptModal, setShowAcceptModal] = useState(false)
@@ -23,9 +46,9 @@ export default function Home() {
   // API call with progress updates
   const callBackend = async () => {
     const stages = [
-      { stage: 1, message: 'Analyzing your insurance needs...', progress: 33, delay: 6000 },
-      { stage: 2, message: 'Matching with best coverage options...', progress: 66, delay: 7000 },
-      { stage: 3, message: 'Preparing your personalized quote...', progress: 100, delay: 7000 }
+      { stage: 1, message: `Analyzing ${formData.insuranceType} requirements for ${formData.firstName}...`, progress: 33, delay: 4000 },
+      { stage: 2, message: 'Consulting AI insurance advisor for personalized recommendations...', progress: 66, delay: 5000 },
+      { stage: 3, message: 'Generating your comprehensive quote with pricing...', progress: 100, delay: 5000 }
     ]
 
     for (const stage of stages) {
@@ -35,31 +58,102 @@ export default function Home() {
 
     // Call the API
     try {
+      // Construct a detailed prompt with all form data for insurance quote generation
+      const comprehensivePrompt = `Generate a CONCISE, professional insurance quote for:
+
+CLIENT: ${formData.firstName} ${formData.lastName}, Age ${formData.age}, ${formData.nationality}
+INSURANCE TYPE: ${formData.insuranceType}
+${formData.additionalInfo ? `NOTES: ${formData.additionalInfo}` : ''}
+
+FORMAT REQUIREMENTS (IMPORTANT - Keep it SHORT and SCANNABLE):
+
+1. Start with: "Hello ${formData.firstName}," (personalized greeting)
+
+2. Brief intro (1-2 sentences max) thanking them for choosing Ensura
+
+3. COVERAGE RECOMMENDATION (3-4 bullet points):
+   • Policy type and coverage amount
+   • Term/duration
+   • Key benefit highlights
+   
+4. PRICING (clear and prominent):
+   • Monthly premium: $XX
+   • Annual premium: $XXX
+   • Total coverage: $XXX,XXX
+   
+5. WHY THIS WORKS FOR YOU (2-3 bullets based on age ${formData.age}, ${formData.nationality}):
+   • Age advantage / risk profile
+   • Coverage fit for life stage
+   
+6. IMPORTANT TO KNOW (2-3 key exclusions only):
+   • Most critical exclusion
+   • One other important note
+   
+7. NEXT STEPS (3 simple steps):
+   • Step 1: Review and accept
+   • Step 2: Complete verification  
+   • Step 3: Coverage activates
+
+Keep the TOTAL response under 300 words. Use clear sections. Be professional but warm. This is for blockchain-based insurance on Flare Network - mention the transparency/smart contract benefit once briefly.
+
+Make it look like a modern, executive summary style quote - not a lengthy contract.`.trim()
+
+      console.log('📤 Sending quote request to AI with client data:', {
+        name: `${formData.firstName} ${formData.lastName}`,
+        age: formData.age,
+        insuranceType: formData.insuranceType,
+        nationality: formData.nationality
+      })
+
       const response = await fetch('/api/ai/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           providerAddress: "0xf07240Efa67755B5311bc75784a061eDB47165Dd",
-          prompt: message
+          prompt: comprehensivePrompt,
+          systemPromptType: "policyAdvisor",  // Use specialized insurance advisor prompt
+          responseFormat: "default",  // Get detailed response, not concise
+          temperature: 0.7,  // Balanced creativity and accuracy
+          maxTokens: 2000  // Allow for detailed quote
         })
       })
       
+      console.log('📥 Received response status:', response.status)
+      
       if (!response.ok) {
-        const text = await response.text()
-        setApiResult(`Error ${response.status}: ${text}`)
+        const errorData = await response.json().catch(() => null)
+        console.error('❌ API Error:', errorData)
+        
+        let errorMessage = 'Failed to generate quote. Please try again.'
+        
+        if (errorData?.code === 'INSUFFICIENT_BALANCE') {
+          errorMessage = '⚠️ Service temporarily unavailable. Please contact support or try again later.\n\nTechnical details: Insufficient blockchain credits.'
+        } else if (errorData?.code === 'PROVIDER_NOT_ACKNOWLEDGED') {
+          errorMessage = '⚠️ Service initialization in progress. Please try again in a moment.'
+        } else if (errorData?.message) {
+          errorMessage = `Error: ${errorData.message}`
+        }
+        
+        setApiResult(errorMessage)
       } else {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
-          // Extract just the content from the response
-          setApiResult(data.response || JSON.stringify(data, null, 2))
+          console.log('✅ Quote generated successfully')
+          
+          // Extract the actual quote content
+          const quoteContent = data.response || data.content || JSON.stringify(data, null, 2)
+          
+          setApiResult(quoteContent)
         } else {
           const text = await response.text()
+          console.warn('⚠️ Received non-JSON response')
           setApiResult(`Received non-JSON response:\n${text}`)
         }
       }
     } catch (error) {
-      setApiResult('Error: ' + (error as Error).message)
+      console.error('❌ Request Error:', error)
+      setApiResult('Network error: Unable to connect to the service. Please check your connection and try again.\n\nError details: ' + (error as Error).message)
     }
 
     setIsLoading(false)
@@ -68,10 +162,20 @@ export default function Home() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!message.trim()) return
+    
+    // Validation
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.age || 
+        !formData.nationality || !formData.insuranceType) {
+      alert('Please fill in all required fields')
+      return
+    }
     
     setIsLoading(true)
     callBackend()
+  }
+
+  const handleInputChange = (field: keyof FormData, value: string | File | null) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleAcceptClick = () => {
@@ -84,7 +188,16 @@ export default function Home() {
     alert('Contract accepted! Your policy is now active. We will send confirmation to your email.')
     // Reset to initial state
     setShowContract(false)
-    setMessage('')
+    setFormData({
+      firstName: '',
+      lastName: '',
+      age: '',
+      nationality: '',
+      insuranceType: '',
+      driversLicense: null,
+      passport: null,
+      additionalInfo: ''
+    })
     setCurrentStage({ stage: 0, message: '', progress: 0 })
   }
 
@@ -93,7 +206,16 @@ export default function Home() {
     if (confirmed) {
       // Reset to initial state
       setShowContract(false)
-      setMessage('')
+      setFormData({
+        firstName: '',
+        lastName: '',
+        age: '',
+        nationality: '',
+        insuranceType: '',
+        driversLicense: null,
+        passport: null,
+        additionalInfo: ''
+      })
       setCurrentStage({ stage: 0, message: '', progress: 0 })
     }
   }
@@ -116,7 +238,7 @@ export default function Home() {
               letterSpacing: '-0.02em'
             }}
           >
-            HLife
+            Ensura
           </h1>
           <p 
             className="text-xl text-gray-600 font-light tracking-wide"
@@ -135,20 +257,214 @@ export default function Home() {
               <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
               
               <div className="bg-white/60 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-teal/10">
-                <label 
-                  htmlFor="message" 
-                  className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide uppercase"
-                  style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '0.1em' }}
+                <h2 
+                  className="text-2xl font-bold text-navy mb-6"
+                  style={{ fontFamily: "'Crimson Text', serif" }}
                 >
-                  Share Your Story
-                </label>
-                <Textarea
-                  id="message"
-                  placeholder="Tell us about your insurance needs, concerns, or questions. We're here to listen and help protect what matters most to you..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="min-h-[300px] text-lg"
-                />
+                  Insurance Application
+                </h2>
+
+                {/* Personal Information Section */}
+                <div className="mb-8">
+                  <h3 
+                    className="text-sm font-semibold text-gray-700 mb-4 tracking-wide uppercase"
+                    style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '0.1em' }}
+                  >
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label 
+                        htmlFor="firstName" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        First Name <span className="text-coral">*</span>
+                      </label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        placeholder="John"
+                        value={formData.firstName}
+                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label 
+                        htmlFor="lastName" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        Last Name <span className="text-coral">*</span>
+                      </label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        placeholder="Doe"
+                        value={formData.lastName}
+                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label 
+                        htmlFor="age" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        Age <span className="text-coral">*</span>
+                      </label>
+                      <Input
+                        id="age"
+                        type="number"
+                        placeholder="30"
+                        min="18"
+                        max="120"
+                        value={formData.age}
+                        onChange={(e) => handleInputChange('age', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label 
+                        htmlFor="nationality" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        Nationality <span className="text-coral">*</span>
+                      </label>
+                      <Select
+                        id="nationality"
+                        value={formData.nationality}
+                        onChange={(e) => handleInputChange('nationality', e.target.value)}
+                        required
+                      >
+                        <option value="">Select nationality...</option>
+                        <option value="United States">United States</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                        <option value="Spain">Spain</option>
+                        <option value="Italy">Italy</option>
+                        <option value="Netherlands">Netherlands</option>
+                        <option value="Switzerland">Switzerland</option>
+                        <option value="Japan">Japan</option>
+                        <option value="China">China</option>
+                        <option value="India">India</option>
+                        <option value="Brazil">Brazil</option>
+                        <option value="Mexico">Mexico</option>
+                        <option value="Other">Other</option>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insurance Type Section */}
+                <div className="mb-8">
+                  <h3 
+                    className="text-sm font-semibold text-gray-700 mb-4 tracking-wide uppercase"
+                    style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '0.1em' }}
+                  >
+                    Insurance Details
+                  </h3>
+                  <div>
+                    <label 
+                      htmlFor="insuranceType" 
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                      style={{ fontFamily: "'Outfit', sans-serif" }}
+                    >
+                      Type of Insurance <span className="text-coral">*</span>
+                    </label>
+                    <Select
+                      id="insuranceType"
+                      value={formData.insuranceType}
+                      onChange={(e) => handleInputChange('insuranceType', e.target.value)}
+                      required
+                    >
+                      <option value="">Select insurance type...</option>
+                      <option value="Health Insurance">Health Insurance</option>
+                      <option value="Life Insurance">Life Insurance</option>
+                      <option value="Auto Insurance">Auto Insurance</option>
+                      <option value="Home Insurance">Home Insurance</option>
+                      <option value="Travel Insurance">Travel Insurance</option>
+                      <option value="Business Insurance">Business Insurance</option>
+                      <option value="Disability Insurance">Disability Insurance</option>
+                      <option value="Pet Insurance">Pet Insurance</option>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Document Upload Section */}
+                <div className="mb-8">
+                  <h3 
+                    className="text-sm font-semibold text-gray-700 mb-4 tracking-wide uppercase"
+                    style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '0.1em' }}
+                  >
+                    Document Uploads
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label 
+                        htmlFor="driversLicense" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        Driver&apos;s License (Optional)
+                      </label>
+                      <FileUpload
+                        id="driversLicense"
+                        label="Upload driver's license..."
+                        accept="image/*,.pdf"
+                        onChange={(file) => handleInputChange('driversLicense', file)}
+                      />
+                    </div>
+                    <div>
+                      <label 
+                        htmlFor="passport" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                      >
+                        Passport (Optional)
+                      </label>
+                      <FileUpload
+                        id="passport"
+                        label="Upload passport..."
+                        accept="image/*,.pdf"
+                        onChange={(file) => handleInputChange('passport', file)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information Section */}
+                <div className="mb-6">
+                  <h3 
+                    className="text-sm font-semibold text-gray-700 mb-4 tracking-wide uppercase"
+                    style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '0.1em' }}
+                  >
+                    Additional Information
+                  </h3>
+                  <label 
+                    htmlFor="additionalInfo" 
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                    style={{ fontFamily: "'Outfit', sans-serif" }}
+                  >
+                    Tell us more about your insurance needs
+                  </label>
+                  <Textarea
+                    id="additionalInfo"
+                    placeholder="Share any specific concerns, medical conditions, coverage preferences, or questions you have. This helps us provide you with the most accurate quote..."
+                    value={formData.additionalInfo}
+                    onChange={(e) => handleInputChange('additionalInfo', e.target.value)}
+                    className="min-h-[150px]"
+                  />
+                </div>
                 
                 <div className="flex justify-end mt-6">
                   <Button 
@@ -160,7 +476,7 @@ export default function Home() {
                       fontFamily: "'Outfit', sans-serif"
                     }}
                   >
-                    Submit
+                    Get Your Quote
                   </Button>
                 </div>
               </div>
@@ -191,6 +507,23 @@ export default function Home() {
                             className="h-full transition-all duration-1000 ease-out"
                             style={{ width: `${currentStage.progress}%`, backgroundColor: 'var(--teal)' }}
                           />
+                        </div>
+                      </div>
+
+                      {/* Application Summary */}
+                      <div className="bg-teal/5 rounded-lg p-4 border border-teal/10">
+                        <p className="text-xs font-semibold text-teal mb-2 uppercase tracking-wider">
+                          Your Application
+                        </p>
+                        <div className="space-y-1 text-sm text-gray-700">
+                          <p><span className="font-medium">Applicant:</span> {formData.firstName} {formData.lastName}</p>
+                          <p><span className="font-medium">Coverage:</span> {formData.insuranceType}</p>
+                          <p><span className="font-medium">Age:</span> {formData.age} | <span className="font-medium">Nationality:</span> {formData.nationality}</p>
+                          {(formData.driversLicense || formData.passport) && (
+                            <p className="text-xs text-teal mt-2">
+                              ✓ {[formData.driversLicense && "License", formData.passport && "Passport"].filter(Boolean).join(', ')} uploaded
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -282,21 +615,35 @@ export default function Home() {
                     className="text-4xl font-bold text-navy mb-2"
                     style={{ fontFamily: "'Crimson Text', serif" }}
                   >
-                    Your Insurance Contract
+                    Your Insurance Quote
                   </h2>
                   <p className="text-gray-600 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    Please review the terms and conditions below
+                    Review your personalized coverage and pricing below
                   </p>
                 </div>
 
                 {/* Insurance Policy Quote */}
                 <div className="space-y-6 mb-8">
-                  <div className="bg-teal/5 rounded-lg p-8 border border-teal/10">
-                    <h3 className="text-lg font-semibold text-navy mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                      Your Insurance Policy Quote
+                  <div className="bg-gradient-to-br from-teal/5 to-teal/10 rounded-xl p-8 border-2 border-teal/20 shadow-lg">
+                    <h3 className="text-xl font-bold text-navy mb-6 flex items-center gap-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      <Shield className="w-5 h-5 text-teal" />
+                      Your Personalized Quote
                     </h3>
-                    <div className="bg-white p-6 rounded-lg text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {apiResult}
+                    <div className="bg-white p-8 rounded-xl shadow-inner border border-gray-100 quote-content">
+                      <div 
+                        className="text-gray-800 leading-relaxed space-y-4"
+                        style={{ fontFamily: "'Outfit', sans-serif" }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: apiResult
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-navy font-bold">$1</strong>')
+                            .replace(/^(Hello.*?)$/gm, '<p class="text-xl font-semibold text-teal mb-4">$1</p>')
+                            .replace(/^(Dear.*?)$/gm, '<p class="text-xl font-semibold text-teal mb-4">$1</p>')
+                            .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold text-lg">$$$1</span>')
+                            .replace(/^(COVERAGE RECOMMENDATION|PRICING|WHY THIS WORKS|IMPORTANT TO KNOW|NEXT STEPS|Coverage|Pricing|Next Steps):/gm, '<h4 class="text-base font-bold text-navy mt-6 mb-2 uppercase tracking-wide" style="font-size: 0.875rem; letter-spacing: 0.05em;">$1:</h4>')
+                            .replace(/^•\s/gm, '<span class="text-teal">•</span> ')
+                            .replace(/\n/g, '<br/>')
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
