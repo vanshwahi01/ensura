@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Select } from '@/app/components/ui/select'
@@ -27,6 +28,7 @@ interface FormData {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -121,17 +123,21 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       console.log('📥 Received response status:', response.status)
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        console.error('❌ API Error:', errorData)
+        const errorData = await response.json().catch(() => ({}))
         
         let errorMessage = 'Failed to generate quote. Please try again.'
         
         if (errorData?.code === 'INSUFFICIENT_BALANCE') {
           errorMessage = '⚠️ Service temporarily unavailable. Please contact support or try again later.\n\nTechnical details: Insufficient blockchain credits.'
+          console.error('❌ Insufficient balance for AI provider')
         } else if (errorData?.code === 'PROVIDER_NOT_ACKNOWLEDGED') {
           errorMessage = '⚠️ Service initialization in progress. Please try again in a moment.'
+          console.error('❌ Provider not acknowledged')
         } else if (errorData?.message) {
           errorMessage = `Error: ${errorData.message}`
+          console.error('❌ API Error:', errorData.message)
+        } else {
+          console.error('❌ API Error: Request failed with status', response.status)
         }
         
         setApiResult(errorMessage)
@@ -179,26 +185,24 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
   }
 
   const handleAcceptClick = () => {
-    setShowAcceptModal(true)
+    // Extract base premium from AI response (simple extraction for demo)
+    const premiumMatch = apiResult.match(/\$(\d+(?:,\d+)*(?:\.\d{2})?)/);
+    const basePremium = premiumMatch ? premiumMatch[1].replace(/,/g, '') : '150';
+    
+    // Navigate to marketplace with quote data
+    const params = new URLSearchParams({
+      type: formData.insuranceType,
+      premium: basePremium,
+      name: formData.firstName,
+    });
+    
+    router.push(`/marketplace?${params.toString()}`);
   }
 
   const handleConfirmAccept = () => {
-    // Contract accepted
+    // This is no longer used - keeping for backwards compatibility
     setShowAcceptModal(false)
-    alert('Contract accepted! Your policy is now active. We will send confirmation to your email.')
-    // Reset to initial state
-    setShowContract(false)
-    setFormData({
-      firstName: '',
-      lastName: '',
-      age: '',
-      nationality: '',
-      insuranceType: '',
-      driversLicense: null,
-      passport: null,
-      additionalInfo: ''
-    })
-    setCurrentStage({ stage: 0, message: '', progress: 0 })
+    handleAcceptClick()
   }
 
   const handleDeclineContract = () => {
@@ -649,12 +653,12 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                 </div>
 
                 {/* Decision Prompt */}
-                <div className="bg-coral/5 rounded-lg p-6 border border-coral/20 mb-8">
+                <div className="bg-teal/5 rounded-lg p-6 border border-teal/20 mb-8">
                   <p className="text-center text-lg font-medium text-navy mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    Do you accept the terms of this insurance contract?
+                    Ready to find matching underwriters?
                   </p>
                   <p className="text-center text-sm text-gray-600">
-                    Your decision is required to proceed
+                    We&apos;ll match you with real underwriters willing to provide coverage
                   </p>
                 </div>
 
@@ -667,18 +671,18 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                     className="font-semibold tracking-wide text-base px-10 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
                     style={{ fontFamily: "'Outfit', sans-serif" }}
                   >
-                    Decline
+                    Start Over
                   </Button>
                   <Button
                     onClick={handleAcceptClick}
                     size="lg"
                     className="font-semibold tracking-wide text-base px-10"
                     style={{ 
-                      backgroundColor: 'var(--teal)',
+                      backgroundColor: 'var(--coral)',
                       fontFamily: "'Outfit', sans-serif"
                     }}
                   >
-                    Accept Contract
+                    Find Underwriters →
                   </Button>
                 </div>
 
