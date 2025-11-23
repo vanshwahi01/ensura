@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     console.log('Signal:', signal);
     
     // Get app_id from environment variable
-    const app_id = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_4020275d788fc6f5664d986dd931e5e6';
-    const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verifyinsurance';
+    const app_id = (process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_4020275d788fc6f5664d986dd931e5e6') as `app_${string}`;
+    const action = (process.env.NEXT_PUBLIC_WORLD_ACTION || 'verifyinsurance') as string;
     
     console.log('App ID:', app_id);
     console.log('Action:', action);

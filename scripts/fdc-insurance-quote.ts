@@ -37,16 +37,9 @@ const SOURCE_ID = "PublicWeb2";
 /**
  * Utility functions for FDC
  */
-function toHex(data: string): string {
-  let result = "";
-  for (let i = 0; i < data.length; i++) {
-    result += data.charCodeAt(i).toString(16);
-  }
-  return result.padEnd(64, "0");
-}
-
 function toUtf8HexString(data: string): string {
-  return "0x" + toHex(data);
+  // Use ethers to properly encode as bytes32
+  return ethers.encodeBytes32String(data);
 }
 
 /**
