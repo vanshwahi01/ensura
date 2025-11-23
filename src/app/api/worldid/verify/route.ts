@@ -4,8 +4,23 @@ export async function POST(request: NextRequest) {
   try {
     const { proof, merkle_root, nullifier_hash, verification_level } = await request.json();
     
+    console.log('🔍 Verifying World ID proof...');
+    
     // Get app_id from environment variable
     const app_id = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_staging_b4e6e14f3566f6e3d2f8e2a3c1b0a9d8';
+    const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verify-human';
+    
+    // For development/staging, you might want to skip actual verification
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 DEV MODE: Bypassing World ID API verification');
+      return NextResponse.json({
+        success: true,
+        verified: true,
+        nullifier_hash,
+        verification_level,
+        dev_mode: true
+      });
+    }
     
     // Call World ID verification API
     const verifyRes = await fetch(
@@ -20,25 +35,27 @@ export async function POST(request: NextRequest) {
           merkle_root,
           proof,
           verification_level,
-          action: 'insurance-verification', // This should match your action in Developer Portal
+          action,
         }),
       }
     );
 
+    const verifyData = await verifyRes.json();
+
     if (!verifyRes.ok) {
-      const errorData = await verifyRes.json();
-      console.error('World ID verification failed:', errorData);
+      console.error('❌ World ID verification failed:', verifyData);
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Verification failed',
-          details: errorData 
+          error: verifyData.detail || 'Verification failed',
+          code: verifyData.code,
+          details: verifyData 
         },
         { status: 400 }
       );
     }
 
-    const verifyData = await verifyRes.json();
+    console.log('✅ World ID verification successful');
     
     return NextResponse.json({
       success: true,
@@ -48,7 +65,7 @@ export async function POST(request: NextRequest) {
       data: verifyData
     });
   } catch (error) {
-    console.error('World ID verification error:', error);
+    console.error('❌ World ID verification error:', error);
     return NextResponse.json(
       { 
         success: false, 

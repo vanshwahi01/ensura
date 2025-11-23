@@ -302,6 +302,17 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       <div className="max-w-4xl w-full z-10">
         {/* Header Section */}
         <header className="text-center mb-16 opacity-0 animate-slide-up">
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={() => router.push('/become-insurer')}
+              variant="outline"
+              size="sm"
+              className="font-medium"
+              style={{ fontFamily: "'Outfit', sans-serif" }}
+            >
+              Become an Insurer →
+            </Button>
+          </div>
           <h1 
             className="text-8xl font-bold mb-4 tracking-tight"
             style={{ 

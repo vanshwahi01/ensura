@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { IDKitWidget, ISuccessResult, VerificationLevel } from '@worldcoin/idkit'
 import { Button } from '@/app/components/ui/button'
-import { Shield, CheckCircle2, Globe } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
 interface WorldIDVerificationProps {
   onSuccess: (result: ISuccessResult) => void
@@ -10,9 +11,37 @@ interface WorldIDVerificationProps {
 }
 
 export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerificationProps) {
+  // Suppress the DialogTitle warning from IDKitWidget (third-party library issue)
+  useEffect(() => {
+    const originalError = console.error
+    console.error = (...args) => {
+      if (
+        typeof args[0] === 'string' && 
+        args[0].includes('DialogContent') && 
+        args[0].includes('DialogTitle')
+      ) {
+        // Suppress this specific warning from IDKitWidget
+        return
+      }
+      originalError.apply(console, args)
+    }
+    
+    return () => {
+      console.error = originalError
+    }
+  }, [])
   const handleVerify = async (proof: ISuccessResult) => {
     try {
-      // Send proof to backend for verification
+      console.log('✅ World ID proof received:', proof);
+      
+      // For demo/development: Skip backend verification and directly call onSuccess
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 DEV MODE: Skipping backend verification');
+        onSuccess(proof);
+        return;
+      }
+
+      // Send proof to backend for verification (production)
       const response = await fetch('/api/worldid/verify', {
         method: 'POST',
         headers: {
@@ -27,7 +56,9 @@ export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerif
       });
 
       if (!response.ok) {
-        throw new Error('Verification failed on server');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Backend verification failed:', errorData);
+        throw new Error(errorData.error || 'Verification failed on server');
       }
 
       const data = await response.json();
@@ -38,37 +69,29 @@ export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerif
         throw new Error(data.error || 'Verification failed');
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      console.error('❌ Verification error:', error);
       if (onError) {
         onError(error as Error);
       }
     }
   };
 
-  const handleError = (error: Error) => {
-    console.error('World ID Error:', error);
-    if (onError) {
-      onError(error);
-    }
-  };
-
   // Get app_id from environment variable or use staging for demo
   const appId = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_staging_b4e6e14f3566f6e3d2f8e2a3c1b0a9d8';
-  const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'insurance-verification';
+  const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verify-human';
 
   return (
     <div className="w-full">
       <IDKitWidget
-        app_id={appId}
+        app_id={appId as `app_${string}`}
         action={action}
         onSuccess={handleVerify}
-        onError={handleError}
         verification_level={VerificationLevel.Device}
-        signal=""
-        enableTelemetry
+        handleVerify={handleVerify}
       >
         {({ open }) => (
           <Button
+            type="button"
             onClick={open}
             size="lg"
             className="w-full font-semibold tracking-wide text-base py-6"
