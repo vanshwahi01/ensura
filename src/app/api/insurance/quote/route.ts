@@ -21,13 +21,21 @@ import { getSystemPrompt } from '@/lib/aiConfig';
 // In-memory storage for quotes (fallback when KV is not available)
 const quoteStore = new Map<string, InsuranceQuote>();
 
-// Try to import Vercel KV, use in-memory fallback if not available
+// Check if Vercel KV environment variables are set
+const hasKVConfig = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+
+// Import KV only if configured
 let kv: any = null;
-try {
-  const kvModule = require('@vercel/kv');
-  kv = kvModule.kv;
-} catch (e) {
-  console.log('⚠️  Vercel KV not available, using in-memory storage');
+if (hasKVConfig) {
+  try {
+    const kvModule = require('@vercel/kv');
+    kv = kvModule.kv;
+    console.log('✅ Using Vercel KV for storage');
+  } catch (e) {
+    console.log('⚠️  Failed to load KV module, using in-memory storage');
+  }
+} else {
+  console.log('⚠️  Vercel KV not configured, using in-memory storage');
 }
 
 // Storage adapter to handle both KV and in-memory
