@@ -2,13 +2,21 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ISuccessResult } from '@worldcoin/idkit'
+import dynamic from 'next/dynamic'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Select } from '@/app/components/ui/select'
 import { Textarea } from '@/app/components/ui/textarea'
 import { FileUpload } from '@/app/components/ui/fileupload'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/app/components/ui/modal'
-import { Shield, Heart, Users, Loader2, CheckCircle2 } from 'lucide-react'
+import { Shield, Heart, Users, Loader2, CheckCircle2, Wallet, Globe } from 'lucide-react'
+
+// Dynamically import WorldIDVerification to avoid SSR issues
+const WorldIDVerification = dynamic(
+  () => import('@/app/components/WorldIDVerification'),
+  { ssr: false }
+)
 
 interface ProgressStage {
   stage: number
@@ -44,6 +52,12 @@ export default function Home() {
   const [showAcceptModal, setShowAcceptModal] = useState(false)
   const [currentStage, setCurrentStage] = useState<ProgressStage>({ stage: 0, message: '', progress: 0 })
   const [apiResult, setApiResult] = useState('')
+  
+  // World ID & Wallet State
+  const [isWorldIDVerified, setIsWorldIDVerified] = useState(false)
+  const [worldIDData, setWorldIDData] = useState<ISuccessResult | null>(null)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false)
 
   // API call with progress updates
   const callBackend = async () => {
@@ -224,6 +238,60 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
     }
   }
 
+  // World ID Verification Handler
+  const handleWorldIDSuccess = (result: ISuccessResult) => {
+    console.log('✅ World ID Verification successful:', result)
+    setWorldIDData(result)
+    setIsWorldIDVerified(true)
+  }
+
+  const handleWorldIDError = (error: Error) => {
+    console.error('❌ World ID Verification failed:', error)
+    alert('World ID verification failed. Please try again.')
+  }
+
+  // Dev only: Skip World ID verification
+  const handleSkipWorldID = () => {
+    console.log('🔧 DEV MODE: Skipping World ID verification')
+    setWorldIDData({
+      merkle_root: 'dev_mock_root',
+      nullifier_hash: 'dev_mock_nullifier',
+      proof: 'dev_mock_proof',
+      verification_level: 'device'
+    } as ISuccessResult)
+    setIsWorldIDVerified(true)
+  }
+
+  // Wallet Connection Handler
+  const handleConnectWallet = async () => {
+    setIsConnectingWallet(true)
+    
+    try {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        // Request account access
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        }) as string[]
+        
+        if (accounts && accounts.length > 0) {
+          setWalletAddress(accounts[0])
+          console.log('✅ Wallet connected:', accounts[0])
+        }
+      } else {
+        alert('Please install MetaMask or another Web3 wallet to continue.\n\nFor demo purposes, we\'ll simulate a wallet connection.')
+        // For demo: generate a mock wallet address
+        const mockWallet = '0x' + Math.random().toString(16).substring(2, 42)
+        setWalletAddress(mockWallet)
+        console.log('🔧 Demo wallet address:', mockWallet)
+      }
+    } catch (error) {
+      console.error('Wallet connection error:', error)
+      alert('Failed to connect wallet. Please try again.')
+    } finally {
+      setIsConnectingWallet(false)
+    }
+  }
+
   return (
     <div className="geometric-bg min-h-screen flex flex-col items-center justify-start px-6 py-12 relative overflow-hidden">
       {/* Decorative floating elements */}
@@ -252,8 +320,167 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
           </p>
         </header>
 
+        {/* World ID Verification Section */}
+        {!isWorldIDVerified && !isLoading && !showContract && (
+          <div className="space-y-6 opacity-0 animate-scale-in delay-300">
+            <div className="relative">
+              {/* Decorative corner elements */}
+              <div className="absolute -top-4 -left-4 w-8 h-8 border-l-2 border-t-2 border-teal/30" />
+              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
+              
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-12 shadow-2xl border border-teal/10 max-w-2xl mx-auto">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal/20 to-coral/20 flex items-center justify-center mx-auto mb-6 border-2 border-white shadow-lg">
+                    <Globe className="w-10 h-10 text-teal" />
+                  </div>
+                  <h2 
+                    className="text-4xl font-bold text-navy mb-4"
+                    style={{ fontFamily: "'Crimson Text', serif" }}
+                  >
+                    Verify Your Identity
+                  </h2>
+                  <p 
+                    className="text-lg text-gray-600 mb-2"
+                    style={{ fontFamily: "'Outfit', sans-serif" }}
+                  >
+                    Proof of Personhood Required
+                  </p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    To ensure fair and unbiased insurance, we verify that you&apos;re a unique human using World ID - without revealing any personal information.
+                  </p>
+                </div>
+
+                {/* Benefits Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-teal/5 rounded-lg p-4 border border-teal/20 text-center">
+                    <Shield className="w-6 h-6 text-teal mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-navy mb-1">Privacy First</p>
+                    <p className="text-xs text-gray-600">No personal data shared</p>
+                  </div>
+                  <div className="bg-teal/5 rounded-lg p-4 border border-teal/20 text-center">
+                    <CheckCircle2 className="w-6 h-6 text-teal mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-navy mb-1">One Person, One Policy</p>
+                    <p className="text-xs text-gray-600">Prevents fraud & abuse</p>
+                  </div>
+                  <div className="bg-teal/5 rounded-lg p-4 border border-teal/20 text-center">
+                    <Heart className="w-6 h-6 text-teal mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-navy mb-1">Fair Pricing</p>
+                    <p className="text-xs text-gray-600">AI-driven, unbiased quotes</p>
+                  </div>
+                </div>
+
+                {/* World ID Button */}
+                <div className="mb-6">
+                  <WorldIDVerification 
+                    onSuccess={handleWorldIDSuccess}
+                    onError={handleWorldIDError}
+                  />
+                </div>
+
+                {/* Dev Mode: Skip Button */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-center">
+                    <Button
+                      onClick={handleSkipWorldID}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Skip (Dev Only)
+                    </Button>
+                  </div>
+                )}
+
+                {/* Info Text */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    <strong className="text-navy">What is World ID?</strong><br />
+                    World ID is a privacy-preserving proof of personhood protocol. It proves you&apos;re a unique human without revealing your identity. Verification levels include Device (phone), Document (passport), or Orb (biometric).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wallet Connection Section */}
+        {isWorldIDVerified && !walletAddress && !isLoading && !showContract && (
+          <div className="space-y-6 opacity-0 animate-scale-in delay-300">
+            <div className="relative">
+              {/* Decorative corner elements */}
+              <div className="absolute -top-4 -left-4 w-8 h-8 border-l-2 border-t-2 border-teal/30" />
+              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
+              
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-12 shadow-2xl border border-teal/10 max-w-2xl mx-auto">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal/20 to-coral/20 flex items-center justify-center mx-auto mb-6 border-2 border-white shadow-lg">
+                    <Wallet className="w-10 h-10 text-coral" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    <h2 
+                      className="text-4xl font-bold text-navy"
+                      style={{ fontFamily: "'Crimson Text', serif" }}
+                    >
+                      Identity Verified
+                    </h2>
+                  </div>
+                  <p 
+                    className="text-lg text-gray-600 mb-2"
+                    style={{ fontFamily: "'Outfit', sans-serif" }}
+                  >
+                    Connect Your Wallet
+                  </p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Connect your wallet to receive your policy NFT and manage your insurance on-chain.
+                  </p>
+                </div>
+
+                {/* Verification Details */}
+                {worldIDData && (
+                  <div className="bg-teal/5 rounded-lg p-4 mb-6 border border-teal/20">
+                    <p className="text-xs font-semibold text-teal mb-2 uppercase tracking-wide">Verification Details</p>
+                    <div className="space-y-1 text-xs text-gray-700">
+                      <p><span className="font-medium">Level:</span> {worldIDData.verification_level}</p>
+                      <p><span className="font-medium">Status:</span> <span className="text-green-600 font-semibold">✓ Verified</span></p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Connect Wallet Button */}
+                <Button
+                  onClick={handleConnectWallet}
+                  disabled={isConnectingWallet}
+                  size="lg"
+                  className="w-full font-semibold tracking-wide text-base py-6"
+                  style={{ 
+                    backgroundColor: 'var(--coral)',
+                    fontFamily: "'Outfit', sans-serif"
+                  }}
+                >
+                  {isConnectingWallet ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Connecting...
+                    </span>
+                  ) : (
+                    <>
+                      <Wallet className="w-5 h-5 mr-2" />
+                      Connect Wallet
+                    </>
+                  )}
+                </Button>
+
+                <p className="text-xs text-gray-500 text-center mt-4">
+                  Supports MetaMask, WalletConnect, and other Web3 wallets
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Form Section */}
-        {!isLoading && !showContract && (
+        {isWorldIDVerified && walletAddress && !isLoading && !showContract && (
           <form onSubmit={handleSubmit} className="space-y-6 opacity-0 animate-scale-in delay-300">
             <div className="relative">
               {/* Decorative corner elements */}
@@ -261,6 +488,28 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
               <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
               
               <div className="bg-white/60 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-teal/10">
+                {/* Verification Status Banner */}
+                <div className="bg-gradient-to-r from-teal/10 to-coral/10 rounded-lg p-4 mb-6 border border-teal/20">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-navy">Verified Human</p>
+                        <p className="text-xs text-gray-600">{worldIDData?.verification_level} Level</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Wallet className="w-5 h-5 text-coral flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-navy">Wallet Connected</p>
+                        <p className="text-xs text-gray-600 font-mono">
+                          {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <h2 
                   className="text-2xl font-bold text-navy mb-6"
                   style={{ fontFamily: "'Crimson Text', serif" }}
@@ -698,8 +947,8 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
           </div>
         )}
 
-        {/* Icon row - Only show when not loading and not showing contract */}
-        {!isLoading && !showContract && (
+        {/* Icon row - Only show when wallet connected and not loading and not showing contract */}
+        {isWorldIDVerified && walletAddress && !isLoading && !showContract && (
           <>
             <div className="flex justify-center gap-8 mt-12 opacity-0 animate-fade-in delay-400">
               <div className="flex flex-col items-center gap-2">

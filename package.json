@@ -21,6 +21,7 @@
     "@flarenetwork/flare-periphery-contracts": "^0.1.38",
     "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
     "@openzeppelin/contracts": "^5.0.0",
+    "@worldcoin/idkit": "^2.4.2",
     "clsx": "^2.1.1",
     "ethers": "^6.15.0",
     "lucide-react": "^0.554.0",
