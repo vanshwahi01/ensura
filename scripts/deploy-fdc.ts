@@ -16,7 +16,6 @@ const FDC_VERIFICATION_ADDRESSES = {
   // Localhost (mock address for testing)
   31337: "0x0000000000000000000000000000000000000001",
 };
-const connection = await hre.network.connect();
 
 async function main() {
   console.log("🚀 Starting deployment of InsuranceContract with FDC integration...");
