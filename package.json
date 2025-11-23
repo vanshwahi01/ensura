@@ -22,7 +22,6 @@
   "dependencies": {
     "@0glabs/0g-serving-broker": "^0.5.4",
     "@flarenetwork/flare-periphery-contracts": "^0.1.38",
-    "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
     "@openzeppelin/contracts": "^5.0.0",
     "@pythnetwork/entropy-sdk-solidity": "^2.2.1",
     "@pythnetwork/pyth-evm-js": "^2.0.0",
@@ -41,6 +40,8 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.3",
+    "@nomicfoundation/hardhat-ignition": "^3.0.5",
+    "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
     "@nomicfoundation/hardhat-verify": "^3.0.7",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

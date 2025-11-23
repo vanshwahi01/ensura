@@ -11,7 +11,17 @@ import { Select } from '@/app/components/ui/select'
 import { Textarea } from '@/app/components/ui/textarea'
 import { FileUpload } from '@/app/components/ui/fileupload'
 import { EntropyDebugPanel } from '@/app/components/EntropyDebugPanel'
+import { BindingModal } from '@/app/components/BindingModal'
+import { TransactionModal } from '@/app/components/TransactionModal'
 import { Shield, Heart, Users, Loader2, CheckCircle2, Wallet, Globe, Shuffle, Star, ArrowLeft, Eye } from 'lucide-react'
+import { 
+  BindingDetails, 
+  acceptInsuranceOffer, 
+  convertUSDtoFLR,
+  TransactionResult,
+  DEMO_OFFER_IDS,
+  USE_DEMO_CONTRACT
+} from '@/lib/contractService'
 
 // Dynamically import WorldIDVerification to avoid SSR issues
 const WorldIDVerification = dynamic(
@@ -88,6 +98,14 @@ export default function Home() {
   const [selectedUnderwriter, setSelectedUnderwriter] = useState<string | null>(null)
   const [fairnessProof, setFairnessProof] = useState<FairnessProof | null>(null)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  
+  // Blockchain Binding State
+  const [showBindingModal, setShowBindingModal] = useState(false)
+  const [showTransactionModal, setShowTransactionModal] = useState(false)
+  const [bindingDetails, setBindingDetails] = useState<BindingDetails | null>(null)
+  const [transactionStatus, setTransactionStatus] = useState<'preparing' | 'submitting' | 'pending' | 'success' | 'error'>('preparing')
+  const [transactionHash, setTransactionHash] = useState<string | undefined>(undefined)
+  const [transactionError, setTransactionError] = useState<string | undefined>(undefined)
 
   // Scroll to top when split view appears
   useEffect(() => {
@@ -335,6 +353,126 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
     } finally {
       setIsConnectingWallet(false)
     }
+  }
+
+  // Blockchain Binding Handlers
+  const handleAgencyInsuranceBinding = () => {
+    // Extract premium from AI result
+    const premiumMatch = apiResult.match(/Monthly premium:\s*\$(\d+(?:,\d+)*(?:\.\d{2})?)/)
+    const coverageMatch = apiResult.match(/Total coverage:\s*\$(\d+(?:,\d+)*(?:\.\d{2})?)/)
+    
+    const premiumUSD = premiumMatch ? parseFloat(premiumMatch[1].replace(/,/g, '')) : 150
+    const coverageUSD = coverageMatch ? parseFloat(coverageMatch[1].replace(/,/g, '')) : 100000
+    
+    const details: BindingDetails = {
+      // Use real demo offer ID if enabled, otherwise random
+      offerId: USE_DEMO_CONTRACT ? DEMO_OFFER_IDS.agency : Math.floor(Math.random() * 1000),
+      premium: convertUSDtoFLR(premiumUSD),
+      coverageAmount: convertUSDtoFLR(coverageUSD),
+      underwriterAddress: '0xAc0d07907b2c6714b6B99AF44FC52cA42906e701', // Your contract address
+      underwriterName: 'Ensura Agency',
+      insuranceType: formData.insuranceType,
+      isAgency: true
+    }
+    
+    console.log('🏢 Agency Insurance Binding:', {
+      useRealContract: USE_DEMO_CONTRACT,
+      offerId: details.offerId,
+      premium: details.premium + ' C2FLR'
+    })
+    
+    setBindingDetails(details)
+    setShowBindingModal(true)
+  }
+
+  const handleP2PBinding = (underwriter: Underwriter) => {
+    // Extract base premium from AI result
+    const premiumMatch = apiResult.match(/Monthly premium:\s*\$(\d+(?:,\d+)*(?:\.\d{2})?)/)
+    const coverageMatch = apiResult.match(/Total coverage:\s*\$(\d+(?:,\d+)*(?:\.\d{2})?)/)
+    
+    const basePremiumUSD = premiumMatch ? parseFloat(premiumMatch[1].replace(/,/g, '')) : 150
+    const coverageUSD = coverageMatch ? parseFloat(coverageMatch[1].replace(/,/g, '')) : 100000
+    
+    const finalPremiumUSD = basePremiumUSD * underwriter.premiumMultiplier
+    
+    const details: BindingDetails = {
+      // Use real demo offer ID if enabled, otherwise random
+      offerId: USE_DEMO_CONTRACT ? DEMO_OFFER_IDS.p2p : Math.floor(Math.random() * 1000) + 1000,
+      premium: convertUSDtoFLR(finalPremiumUSD),
+      coverageAmount: convertUSDtoFLR(coverageUSD),
+      underwriterAddress: '0x' + Math.random().toString(16).substring(2, 42), // Simulated underwriter address
+      underwriterName: underwriter.name,
+      insuranceType: formData.insuranceType,
+      isAgency: false
+    }
+    
+    console.log('👤 P2P Insurance Binding:', {
+      useRealContract: USE_DEMO_CONTRACT,
+      offerId: details.offerId,
+      underwriter: underwriter.name,
+      premium: details.premium + ' C2FLR'
+    })
+    
+    setBindingDetails(details)
+    setShowBindingModal(true)
+  }
+
+  const handleConfirmBinding = async () => {
+    if (!bindingDetails) return
+    
+    console.log('🚀 Starting binding process...')
+    console.log('📋 Binding details:', bindingDetails)
+    
+    // Close binding modal and show transaction modal
+    setShowBindingModal(false)
+    setShowTransactionModal(true)
+    setTransactionStatus('preparing')
+    
+    try {
+      // Stage 1: Preparing
+      console.log('⏳ Stage 1: Preparing transaction...')
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Stage 2: Submitting
+      console.log('📝 Stage 2: Calling smart contract...')
+      setTransactionStatus('submitting')
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Stage 3: Call the contract (simulated)
+      console.log('🔗 Stage 3: Submitting to blockchain...')
+      setTransactionStatus('pending')
+      const result: TransactionResult = await acceptInsuranceOffer(bindingDetails)
+      
+      console.log('📊 Transaction result:', result)
+      
+      if (result.success) {
+        console.log('✅ Stage 4: Success!')
+        setTransactionStatus('success')
+        setTransactionHash(result.txHash)
+        console.log('🎉 Insurance policy bound successfully!')
+        console.log('📝 Transaction Hash:', result.txHash)
+        console.log('🌐 Explorer URL:', result.explorerUrl)
+        console.log('🆔 Offer ID:', result.offerId)
+      } else {
+        console.error('❌ Binding failed:', result.error)
+        setTransactionStatus('error')
+        setTransactionError(result.error)
+      }
+    } catch (error) {
+      console.error('❌ Binding error:', error)
+      setTransactionStatus('error')
+      setTransactionError((error as Error).message)
+    }
+  }
+
+  const handleCloseTransactionModal = () => {
+    setShowTransactionModal(false)
+    setTransactionHash(undefined)
+    setTransactionError(undefined)
+    setBindingDetails(null)
+    
+    // Optionally: navigate to a policies page or reset the form
+    // For now, just stay on the results
   }
 
   return (
@@ -1012,9 +1150,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
 
                     {/* Action Button */}
                     <Button
-                      onClick={() => {
-                        alert('✅ Agency Insurance Selected!\n\nYour policy would be bound to the blockchain.\nThis is a demo - blockchain integration coming soon.')
-                      }}
+                      onClick={handleAgencyInsuranceBinding}
                       size="lg"
                       className="w-full font-semibold tracking-wide text-base py-6"
                       style={{ 
@@ -1161,7 +1297,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                                   <Button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      alert(`✅ Selected ${underwriter.name}!\n\nContract would be bound on blockchain.\nThis is a demo - full integration coming soon.`);
+                                      handleP2PBinding(underwriter);
                                     }}
                                     size="sm"
                                     className="w-full font-semibold text-sm"
@@ -1267,6 +1403,23 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         underwriters={matchedUnderwriters}
         originalOrder={undefined}
         shuffledOrder={undefined}
+      />
+
+      {/* Blockchain Binding Modals */}
+      <BindingModal
+        isOpen={showBindingModal}
+        onClose={() => setShowBindingModal(false)}
+        onConfirm={handleConfirmBinding}
+        details={bindingDetails}
+      />
+
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={handleCloseTransactionModal}
+        status={transactionStatus}
+        txHash={transactionHash}
+        offerId={bindingDetails?.offerId}
+        error={transactionError}
       />
     </div>
   )
