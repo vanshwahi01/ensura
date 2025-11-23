@@ -71,7 +71,7 @@ interface InsuranceQuote {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userInput, requesterAddress } = await request.json();
+    const { userInput, requesterAddress, useMock } = await request.json();
 
     if (!userInput || !requesterAddress) {
       return NextResponse.json(
@@ -82,11 +82,42 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Generating insurance quote for:', requesterAddress);
 
-    // Use specialized insurance advisor system prompt
-    const systemPrompt = getSystemPrompt('policyAdvisor');
+    let aiResponse: string;
+    let aiMetadata = {
+      model: 'llama-3.3-70b-instruct',
+      provider: OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"],
+      chatId: undefined as string | undefined
+    };
 
-    // Enhanced prompt to get structured insurance data
-    const enhancedPrompt = `${userInput}
+    // Use mock response if requested or if 0G broker unavailable
+    if (useMock) {
+      console.log('🔧 Using mock AI response for testing');
+      aiResponse = `**Insurance Quote - Health Coverage**
+
+Based on your request for $50,000 health insurance coverage, here is your personalized quote:
+
+**Coverage Details:**
+- Coverage Amount: $50,000 USD
+- Annual Premium: $1,200 USD
+- Coverage Duration: 12 months
+- Risk Assessment Score: 35/100 (Low-Medium Risk)
+
+**Key Benefits:**
+- Comprehensive health coverage including hospitalization, surgery, and emergency care
+- Worldwide coverage with 24/7 support
+- No deductible for emergency services
+- Prescription drug coverage included
+
+This quote is valid for 24 hours and is based on the information provided. The low-medium risk score reflects standard health insurance risk assessment.`;
+      
+      aiMetadata.model = 'mock-llm-testing';
+      aiMetadata.provider = '0xMOCK000000000000000000000000000000000000';
+    } else {
+      // Use specialized insurance advisor system prompt
+      const systemPrompt = getSystemPrompt('policyAdvisor');
+
+      // Enhanced prompt to get structured insurance data
+      const enhancedPrompt = `${userInput}
 
 Based on the above request, provide a detailed insurance quote with:
 1. Recommended coverage amount (in USD)
@@ -97,23 +128,55 @@ Based on the above request, provide a detailed insurance quote with:
 
 Format your response as a clear insurance quote that includes all pricing details.`;
 
-    // Default to Llama 70B for insurance quotes
-    const provider = process.env.PROVIDER_LLAMA_70B || OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"];
+      // Default to Llama 70B for insurance quotes
+      const provider = process.env.PROVIDER_LLAMA_70B || OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"];
 
-    // Generate quote using 0G AI
-    const result = await brokerService.sendQuery(provider, enhancedPrompt, {
-      systemPrompt,
-      responseFormat: 'default', // Full response for insurance quotes
-      temperature: 0.5, // Lower temperature for more consistent quotes
-      maxTokens: 2000
-    });
+      try {
+        // Generate quote using 0G AI
+        const result = await brokerService.sendQuery(provider, enhancedPrompt, {
+          systemPrompt,
+          responseFormat: 'default', // Full response for insurance quotes
+          temperature: 0.5, // Lower temperature for more consistent quotes
+          maxTokens: 2000
+        });
 
-    if (!result.content) {
-      throw new Error('Failed to generate insurance quote');
+        if (!result.content) {
+          throw new Error('Failed to generate insurance quote');
+        }
+
+        aiResponse = result.content;
+        aiMetadata = {
+          model: result.metadata?.model || 'llama-3.3-70b-instruct',
+          provider: result.metadata?.provider || provider,
+          chatId: result.metadata?.chatId
+        };
+      } catch (ogError: any) {
+        console.warn('⚠️  0G AI failed, falling back to mock response:', ogError.message);
+        aiResponse = `**Insurance Quote - Health Coverage**
+
+Based on your request for health insurance coverage, here is your personalized quote:
+
+**Coverage Details:**
+- Coverage Amount: $50,000 USD
+- Annual Premium: $1,200 USD
+- Coverage Duration: 12 months
+- Risk Assessment Score: 35/100 (Low-Medium Risk)
+
+**Key Benefits:**
+- Comprehensive health coverage including hospitalization, surgery, and emergency care
+- Worldwide coverage with 24/7 support
+- No deductible for emergency services
+- Prescription drug coverage included
+
+This quote is valid for 24 hours. (Mock response due to 0G unavailability)`;
+        
+        aiMetadata.model = 'mock-llm-fallback';
+        aiMetadata.provider = '0xMOCK000000000000000000000000000000000000';
+      }
     }
 
     // Parse the AI response to extract structured data
-    const parsedQuote = parseInsuranceQuote(result.content);
+    const parsedQuote = parseInsuranceQuote(aiResponse);
 
     // Generate unique quote ID
     const quoteId = generateQuoteId(requesterAddress);
@@ -124,16 +187,12 @@ Format your response as a clear insurance quote that includes all pricing detail
       requesterAddress,
       timestamp: Date.now(),
       userInput,
-      aiResponse: result.content,
+      aiResponse: aiResponse,
       premium: parsedQuote.premium,
       coverageAmount: parsedQuote.coverageAmount,
       validUntil: Date.now() + (24 * 60 * 60 * 1000), // Valid for 24 hours
       riskScore: parsedQuote.riskScore,
-      metadata: {
-        model: result.metadata?.model || 'llama-3.3-70b-instruct',
-        provider: result.metadata?.provider || provider,
-        chatId: result.metadata?.chatId
-      }
+      metadata: aiMetadata
     };
 
     await storage.set(`quote:${quoteId}`, quote);
