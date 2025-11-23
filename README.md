@@ -6,11 +6,11 @@
 ![Version](https://img.shields.io/badge/version-v0.0.0-blue)
 
 
-Decentralized insurance built for real users.
+## View the Flare Deployed Contract
+https://coston2-explorer.flare.network/address/0xAc0d07907b2c6714b6B99AF44FC52cA42906e701?tab=contract
 
 
 ## Built With
-
 
 - **Flare's FDC** - Flare Data Connector for decentralized data verification
 - **0G** - Decentralized compute network
@@ -23,7 +23,7 @@ Decentralized insurance built for real users.
 ### Prerequisites
 
 
-Send >= 1 OG Token to provider if this is the first time the wallet is being used.
+Send atleast 2 OG Token to provider if this is the first time the wallet is being used.
 
 
 ### Setup
@@ -33,23 +33,44 @@ Create a `.env` file in the root directory:
 
 
 ```env
-PRIVATE_KEY=<your private key without 0x prefix>
+PRIVATE_KEY=<your private key of wallet without 0x prefix>
 PORT=4000
 NODE_ENV=development
-```
+COSTON2_RPC_URL=https://coston2-api.flare.network/ext/C/rpc
+FLARE_RPC_URL=https://flare-api.flare.network/ext/C/rpc
 
+OG_NETWORK_RPC=https://evmrpc-testnet.0g.ai
+OG_CHAIN_ID=16600
+
+# Network: 'coston2' (testnet) or 'flare' (mainnet)
+NEXT_PUBLIC_FLARE_NETWORK=coston2
+
+# FDC API Key (get from https://fdc.flare.network)
+FDC_API_KEY=00000000-0000-0000-0000-000000000000
+
+# FDC Verifier URL (Coston2)
+FDC_VERIFIER_URL=https://fdc-verifiers-testnet.flare.network/
+
+# Data Availability Layer URL (Coston2)
+DA_LAYER_URL=https://ctn2-data-availability.flare.network/
+
+# Updated FDC URLs from Flare
+WEB2JSON_VERIFIER_URL_TESTNET=https://web2json-verifier-test.flare.rocks/
+COSTON2_DA_LAYER_URL=https://ctn2-data-availability.flare.network/
+
+# Flare FDC URLs 
+VERIFIER_URL_TESTNET=https://fdc-verifiers-testnet.flare.network/
+WEB2JSON_VERIFIER_URL_TESTNET=https://web2json-verifier-test.flare.rocks/
+COSTON2_DA_LAYER_URL=https://ctn2-data-availability.flare.network/
+```
 
 ### Install & Run
 
 
 ```bash
 npm install
-npm run build
 npm run dev
 ```
-
-
-## How to Use PeerSurance
 
 
 ### For Insurance Seekers
@@ -73,7 +94,8 @@ Start by filling out the insurance application form on the homepage:
   - Travel Insurance
   - Business Insurance
   - Disability Insurance
-  - Pet Insurance
+  - Blockchain Insurance
+  - Any Other
 
 
 **Optional Documents:**
@@ -91,25 +113,23 @@ Click **"Get Your Quote"** to submit your application.
 #### 2. AI-Powered Quote Generation
 
 
-After submission, your application goes through a 3-stage analysis process powered by the 0G decentralized compute network:
+After submission, your application goes through a 4-stage analysis process powered by the 0G decentralized compute network:
 
 
-**Stage 1: Data Analysis (33% complete)**
+**Stage 1: Data Analysis**
 - The system analyzes your selected insurance type and personal details
 
 
 
-**Stage 2: AI Inference (66% complete)**
-- An AI insurance advisor processes your information to provide personalized recommendations
+**Stage 2: AI Inference**
+- 0G AI insurance LLM processes your information to provide personalized recommendations
 - Considers factors like your age, nationality, and specific needs
 
 
 
-**Stage 3: Contract Proposal (100% complete)**
+**Stage 3: Contract Proposal**
 - A comprehensive insurance quote is generated with detailed pricing
 
-
-**Total processing time:** 20-180 seconds
 
 
 #### 3. Review Your Personalized Quote

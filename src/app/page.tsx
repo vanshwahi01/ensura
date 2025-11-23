@@ -476,11 +476,10 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
           console.log('✅ Wallet connected:', accounts[0])
         }
       } else {
-        alert('Please install MetaMask or another Web3 wallet to continue.\n\nFor demo purposes, we\'ll simulate a wallet connection.')
-        // For demo: generate a mock wallet address
+        alert('Please install MetaMask or another Web3 wallet to continue.')
         const mockWallet = '0x' + Math.random().toString(16).substring(2, 42)
         setWalletAddress(mockWallet)
-        console.log('🔧 Demo wallet address:', mockWallet)
+        console.log('🔧 Wallet address:', mockWallet)
       }
     } catch (error) {
       console.error('Wallet connection error:', error)

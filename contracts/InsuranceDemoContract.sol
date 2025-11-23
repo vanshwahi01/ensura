@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 /**
  * @title InsuranceDemoContract
  * @notice Simplified insurance contract for demo purposes
- * @dev No FDC verification required - perfect for demonstrations
+ * @dev FDC verification present in other deployed smart contract
  * 
  * This contract allows:
  * 1. Underwriters to create pre-funded offers
