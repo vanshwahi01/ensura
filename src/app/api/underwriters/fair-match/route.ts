@@ -22,7 +22,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-001',
     name: 'Vitalik Buterin',
-    avatar: 'https://i.pravatar.cc/150?img=12',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=VitalikButerin',
     reputation: 4.95,
     totalPoliciesUnderwritten: 342,
     activePolicies: 45,
@@ -36,7 +36,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-002',
     name: 'Changpeng Zhao',
-    avatar: 'https://i.pravatar.cc/150?img=33',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ChangpengZhao',
     reputation: 4.88,
     totalPoliciesUnderwritten: 256,
     activePolicies: 38,
@@ -50,7 +50,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-003',
     name: 'Brian Armstrong',
-    avatar: 'https://i.pravatar.cc/150?img=15',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BrianArmstrong',
     reputation: 4.92,
     totalPoliciesUnderwritten: 198,
     activePolicies: 29,
@@ -64,7 +64,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-004',
     name: 'Cathie Wood',
-    avatar: 'https://i.pravatar.cc/150?img=47',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CathieWood',
     reputation: 4.85,
     totalPoliciesUnderwritten: 167,
     activePolicies: 24,
@@ -78,7 +78,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-005',
     name: 'Anatoly Yakovenko',
-    avatar: 'https://i.pravatar.cc/150?img=56',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnatolyYakovenko',
     reputation: 4.90,
     totalPoliciesUnderwritten: 143,
     activePolicies: 19,
@@ -92,7 +92,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-006',
     name: 'Andre Cronje',
-    avatar: 'https://i.pravatar.cc/150?img=59',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AndreCronje',
     reputation: 4.82,
     totalPoliciesUnderwritten: 124,
     activePolicies: 18,
@@ -107,7 +107,7 @@ const ALL_UNDERWRITERS: Underwriter[] = [
   {
     id: 'uw-999',
     name: 'Sam Bankman-Fried',
-    avatar: 'https://i.pravatar.cc/150?img=68',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SBF',
     reputation: 1.2,
     totalPoliciesUnderwritten: 3,
     activePolicies: 0,

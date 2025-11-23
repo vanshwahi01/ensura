@@ -13,6 +13,7 @@ import { FileUpload } from '@/app/components/ui/fileupload'
 import { EntropyDebugPanel } from '@/app/components/EntropyDebugPanel'
 import { BindingModal } from '@/app/components/BindingModal'
 import { TransactionModal } from '@/app/components/TransactionModal'
+import { FDCDemoModal } from '@/app/components/FDCDemoModal'
 import { Shield, Heart, Users, Loader2, CheckCircle2, Wallet, Globe, Shuffle, Star, ArrowLeft, Eye } from 'lucide-react'
 import { 
   BindingDetails, 
@@ -215,6 +216,9 @@ export default function Home() {
   const [transactionStatus, setTransactionStatus] = useState<'preparing' | 'submitting' | 'pending' | 'success' | 'error'>('preparing')
   const [transactionHash, setTransactionHash] = useState<string | undefined>(undefined)
   const [transactionError, setTransactionError] = useState<string | undefined>(undefined)
+  
+  // FDC Demo Modal State
+  const [showFDCDemo, setShowFDCDemo] = useState(false)
 
   // Scroll to top when split view appears
   useEffect(() => {
@@ -1064,7 +1068,24 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                   />
                 </div>
                 
-                <div className="flex justify-end mt-6">
+                <div className="flex justify-between items-center mt-6">
+                  {/* FDC Demo Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowFDCDemo(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <Image 
+                      src="/flare-logo.svg" 
+                      alt="Flare" 
+                      width={20} 
+                      height={20}
+                    />
+                    <span className="text-xs font-semibold text-blue-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      FDC Attestation Workflow
+                    </span>
+                  </button>
+
                   <Button 
                     type="submit"
                     size="lg"
@@ -1620,6 +1641,12 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         txHash={transactionHash}
         offerId={bindingDetails?.offerId}
         error={transactionError}
+      />
+
+      {/* FDC Demo Modal */}
+      <FDCDemoModal
+        isOpen={showFDCDemo}
+        onClose={() => setShowFDCDemo(false)}
       />
     </div>
   )
