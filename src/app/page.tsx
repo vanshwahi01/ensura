@@ -1,16 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ISuccessResult } from '@worldcoin/idkit'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Select } from '@/app/components/ui/select'
 import { Textarea } from '@/app/components/ui/textarea'
 import { FileUpload } from '@/app/components/ui/fileupload'
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/app/components/ui/modal'
-import { Shield, Heart, Users, Loader2, CheckCircle2, Wallet, Globe } from 'lucide-react'
+import { EntropyDebugPanel } from '@/app/components/EntropyDebugPanel'
+import { Shield, Heart, Users, Loader2, CheckCircle2, Wallet, Globe, Shuffle, Star, ArrowLeft, Eye } from 'lucide-react'
 
 // Dynamically import WorldIDVerification to avoid SSR issues
 const WorldIDVerification = dynamic(
@@ -35,6 +36,30 @@ interface FormData {
   additionalInfo: string
 }
 
+interface Underwriter {
+  id: string
+  name: string
+  avatar: string
+  reputation: number
+  totalPoliciesUnderwritten: number
+  activePolicies: number
+  premiumMultiplier: number
+  coverageLimit: number
+  collateralLocked: number
+  specialties: string[]
+  responseTime: string
+  claimApprovalRate: number
+}
+
+interface FairnessProof {
+  randomSeed: string
+  timestamp: number
+  requestId: string
+  entropySource: string
+  method: string
+  guarantee: string
+}
+
 export default function Home() {
   const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
@@ -48,8 +73,6 @@ export default function Home() {
     additionalInfo: ''
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [showContract, setShowContract] = useState(false)
-  const [showAcceptModal, setShowAcceptModal] = useState(false)
   const [currentStage, setCurrentStage] = useState<ProgressStage>({ stage: 0, message: '', progress: 0 })
   const [apiResult, setApiResult] = useState('')
   
@@ -58,13 +81,28 @@ export default function Home() {
   const [worldIDData, setWorldIDData] = useState<ISuccessResult | null>(null)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnectingWallet, setIsConnectingWallet] = useState(false)
+  
+  // Split View State
+  const [showSplitView, setShowSplitView] = useState(false)
+  const [matchedUnderwriters, setMatchedUnderwriters] = useState<Underwriter[]>([])
+  const [selectedUnderwriter, setSelectedUnderwriter] = useState<string | null>(null)
+  const [fairnessProof, setFairnessProof] = useState<FairnessProof | null>(null)
+  const [showDebugPanel, setShowDebugPanel] = useState(false)
+
+  // Scroll to top when split view appears
+  useEffect(() => {
+    if (showSplitView) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [showSplitView])
 
   // API call with progress updates
   const callBackend = async () => {
     const stages = [
-      { stage: 1, message: `Analyzing ${formData.insuranceType} requirements for ${formData.firstName}...`, progress: 33, delay: 4000 },
-      { stage: 2, message: 'Consulting AI insurance advisor for personalized recommendations...', progress: 66, delay: 5000 },
-      { stage: 3, message: 'Generating your comprehensive quote with pricing...', progress: 100, delay: 5000 }
+      { stage: 1, message: `Analyzing ${formData.insuranceType} requirements for ${formData.firstName}...`, progress: 25, delay: 3000 },
+      { stage: 2, message: 'Generating your AI-powered insurance quote...', progress: 50, delay: 3000 },
+      { stage: 3, message: 'Finding matched peer-to-peer underwriters...', progress: 75, delay: 3000 },
+      { stage: 4, message: 'Preparing your personalized options...', progress: 100, delay: 2000 }
     ]
 
     for (const stage of stages) {
@@ -72,7 +110,7 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, stage.delay))
     }
 
-    // Call the API
+    // Call the AI API for quote generation
     try {
       // Construct a detailed prompt with all form data for insurance quote generation
       const comprehensivePrompt = `Generate a CONCISE, professional insurance quote for:
@@ -176,8 +214,32 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       setApiResult('Network error: Unable to connect to the service. Please check your connection and try again.\n\nError details: ' + (error as Error).message)
     }
 
+    // Fetch underwriters in parallel
+    try {
+      console.log('🎲 Fetching fair underwriter ordering...')
+      
+      const response = await fetch(
+        `/api/underwriters/fair-match?type=${encodeURIComponent(formData.insuranceType)}&debug=true`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setMatchedUnderwriters(data.underwriters)
+        setFairnessProof(data.fairnessProof)
+        console.log('✅ Fair underwriters received:', data.underwriters.length, 'matches')
+      }
+    } catch (error) {
+      console.error('❌ Error fetching underwriters:', error)
+    }
+
     setIsLoading(false)
-    setShowContract(true)
+    setShowSplitView(true)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -198,32 +260,11 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleAcceptClick = () => {
-    // Extract base premium from AI response (simple extraction for demo)
-    const premiumMatch = apiResult.match(/\$(\d+(?:,\d+)*(?:\.\d{2})?)/);
-    const basePremium = premiumMatch ? premiumMatch[1].replace(/,/g, '') : '150';
-    
-    // Navigate to marketplace with quote data
-    const params = new URLSearchParams({
-      type: formData.insuranceType,
-      premium: basePremium,
-      name: formData.firstName,
-    });
-    
-    router.push(`/marketplace?${params.toString()}`);
-  }
-
-  const handleConfirmAccept = () => {
-    // This is no longer used - keeping for backwards compatibility
-    setShowAcceptModal(false)
-    handleAcceptClick()
-  }
-
   const handleDeclineContract = () => {
-    const confirmed = confirm('Are you sure you want to decline this contract? You can submit a new request anytime.')
+    const confirmed = confirm('Are you sure you want to start over? You can submit a new request anytime.')
     if (confirmed) {
       // Reset to initial state
-      setShowContract(false)
+      setShowSplitView(false)
       setFormData({
         firstName: '',
         lastName: '',
@@ -235,6 +276,10 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         additionalInfo: ''
       })
       setCurrentStage({ stage: 0, message: '', progress: 0 })
+      setApiResult('')
+      setMatchedUnderwriters([])
+      setSelectedUnderwriter(null)
+      setFairnessProof(null)
     }
   }
 
@@ -332,7 +377,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         </header>
 
         {/* World ID Verification Section */}
-        {!isWorldIDVerified && !isLoading && !showContract && (
+        {!isWorldIDVerified && !isLoading && !showSplitView && (
           <div className="space-y-6 opacity-0 animate-scale-in delay-300">
             <div className="relative">
               {/* Decorative corner elements */}
@@ -415,7 +460,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         )}
 
         {/* Wallet Connection Section */}
-        {isWorldIDVerified && !walletAddress && !isLoading && !showContract && (
+        {isWorldIDVerified && !walletAddress && !isLoading && !showSplitView && (
           <div className="space-y-6 opacity-0 animate-scale-in delay-300">
             <div className="relative">
               {/* Decorative corner elements */}
@@ -491,7 +536,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         )}
 
         {/* Main Form Section */}
-        {isWorldIDVerified && walletAddress && !isLoading && !showContract && (
+        {isWorldIDVerified && walletAddress && !isLoading && !showSplitView && (
           <form onSubmit={handleSubmit} className="space-y-6 opacity-0 animate-scale-in delay-300">
             <div className="relative">
               {/* Decorative corner elements */}
@@ -793,7 +838,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
 
                       {/* Three Stage Indicators */}
                       <div className="space-y-4">
-                        {[1, 2, 3].map((stage) => (
+                        {[1, 2, 3, 4].map((stage) => (
                           <div 
                             key={stage}
                             className="flex items-center gap-4"
@@ -864,102 +909,317 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
           </div>
         )}
 
-        {showContract && (
-          // Contract Review View
+        {/* Split View - Company Insurance vs Peer-to-Peer */}
+        {showSplitView && (
           <div className="space-y-6 animate-scale-in">
-            <div className="relative">
-              {/* Decorative corner elements */}
-              <div className="absolute -top-4 -left-4 w-8 h-8 border-l-2 border-t-2 border-teal/30" />
-              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-r-2 border-b-2 border-coral/30" />
-              
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-10 shadow-2xl border border-teal/20">
-                {/* Header */}
-                <div className="border-b-2 border-teal/20 pb-6 mb-8">
-                  <h2 
-                    className="text-4xl font-bold text-navy mb-2"
-                    style={{ fontFamily: "'Crimson Text', serif" }}
-                  >
-                    Your Insurance Quote
-                  </h2>
-                  <p className="text-gray-600 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    Review your personalized coverage and pricing below
-                  </p>
-                </div>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h2 
+                className="text-5xl font-bold text-navy mb-4"
+                style={{ fontFamily: "'Crimson Text', serif" }}
+              >
+                Choose Your Insurance Path
+              </h2>
+              <p className="text-lg text-gray-600" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                Select between our AI-powered agency insurance or connect directly with peer underwriters
+              </p>
+            </div>
 
-                {/* Insurance Policy Quote */}
-                <div className="space-y-6 mb-8">
-                  <div className="bg-gradient-to-br from-teal/5 to-teal/10 rounded-xl p-8 border-2 border-teal/20 shadow-lg">
-                    <h3 className="text-xl font-bold text-navy mb-6 flex items-center gap-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                      <Shield className="w-5 h-5 text-teal" />
-                      Your Personalized Quote
-                    </h3>
-                    <div className="bg-white p-8 rounded-xl shadow-inner border border-gray-100 quote-content">
+            {/* Split Screen Container */}
+            <div className="grid grid-cols-2 gap-6 min-h-[800px]">
+              {/* LEFT SIDE - Company Insurance (LLM Generated) */}
+              <div className="relative">
+                <div className="sticky top-6">
+                  <div className="bg-gradient-to-br from-teal/10 to-teal/5 rounded-2xl p-8 shadow-2xl border-2 border-teal/30 h-full">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 
+                          className="text-3xl font-bold text-navy mb-2"
+                          style={{ fontFamily: "'Crimson Text', serif" }}
+                        >
+                          Agency Insurance
+                        </h3>
+                        <p className="text-sm text-gray-600">AI-Powered by Ensura</p>
+                      </div>
+                      <div className="w-16 h-16 rounded-full bg-teal/20 flex items-center justify-center border-2 border-teal">
+                        <Shield className="w-8 h-8 text-teal" />
+                      </div>
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-3 gap-3 mb-6">
+                      <div className="bg-white/80 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-teal">Instant</div>
+                        <div className="text-xs text-gray-600">Approval</div>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-teal">24/7</div>
+                        <div className="text-xs text-gray-600">Support</div>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-3 text-center flex flex-col items-center justify-center">
+                        <div className="text-xs text-gray-600 mb-1">Powered by</div>
+                        <Image 
+                          src="/logo.webp" 
+                          alt="0G" 
+                          width={64}
+                          height={32}
+                          className="object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Contract Preview */}
+                    <div className="bg-white/90 rounded-xl p-6 mb-6 max-h-[400px] overflow-y-auto shadow-inner border border-gray-200">
+                      <h4 className="text-sm font-bold text-navy mb-4 uppercase tracking-wide">Your Quote</h4>
                       <div 
-                        className="text-gray-800 leading-relaxed space-y-4"
+                        className="text-sm text-gray-800 leading-relaxed space-y-3"
                         style={{ fontFamily: "'Outfit', sans-serif" }}
                         dangerouslySetInnerHTML={{ 
                           __html: apiResult
                             .replace(/\*\*(.*?)\*\*/g, '<strong class="text-navy font-bold">$1</strong>')
-                            .replace(/^(Hello.*?)$/gm, '<p class="text-xl font-semibold text-teal mb-4">$1</p>')
-                            .replace(/^(Dear.*?)$/gm, '<p class="text-xl font-semibold text-teal mb-4">$1</p>')
-                            .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold text-lg">$$$1</span>')
-                            .replace(/^(COVERAGE RECOMMENDATION|PRICING|WHY THIS WORKS|IMPORTANT TO KNOW|NEXT STEPS|Coverage|Pricing|Next Steps):/gm, '<h4 class="text-base font-bold text-navy mt-6 mb-2 uppercase tracking-wide" style="font-size: 0.875rem; letter-spacing: 0.05em;">$1:</h4>')
+                            .replace(/^(Hello.*?)$/gm, '<p class="text-lg font-semibold text-teal mb-3">$1</p>')
+                            .replace(/^(Dear.*?)$/gm, '<p class="text-lg font-semibold text-teal mb-3">$1</p>')
+                            .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold text-base">$$$1</span>')
+                            .replace(/^(COVERAGE RECOMMENDATION|PRICING|WHY THIS WORKS|IMPORTANT TO KNOW|NEXT STEPS|Coverage|Pricing|Next Steps):/gm, '<h5 class="text-xs font-bold text-navy mt-4 mb-2 uppercase tracking-wide">$1:</h5>')
                             .replace(/^•\s/gm, '<span class="text-teal">•</span> ')
                             .replace(/\n/g, '<br/>')
                         }}
                       />
                     </div>
+
+                    {/* Benefits */}
+                    <div className="bg-teal/10 rounded-lg p-4 mb-6 border border-teal/20">
+                      <h4 className="text-xs font-bold text-navy mb-3 uppercase tracking-wide">Why Choose Agency Insurance?</h4>
+                      <ul className="space-y-2 text-sm text-gray-700">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-teal mt-0.5 flex-shrink-0" />
+                          <span>Instant approval with no waiting</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-teal mt-0.5 flex-shrink-0" />
+                          <span>Backed by Ensura&apos;s capital reserves</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-teal mt-0.5 flex-shrink-0" />
+                          <span>AI-optimized pricing and coverage</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-teal mt-0.5 flex-shrink-0" />
+                          <span>Simplified claims process</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Action Button */}
+                    <Button
+                      onClick={() => {
+                        alert('✅ Agency Insurance Selected!\n\nYour policy would be bound to the blockchain.\nThis is a demo - blockchain integration coming soon.')
+                      }}
+                      size="lg"
+                      className="w-full font-semibold tracking-wide text-base py-6"
+                      style={{ 
+                        backgroundColor: 'var(--teal)',
+                        fontFamily: "'Outfit', sans-serif"
+                      }}
+                    >
+                      Select Agency Insurance
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT SIDE - Peer-to-Peer Marketplace */}
+              <div className="bg-gradient-to-br from-coral/10 to-coral/5 rounded-2xl p-8 shadow-2xl border-2 border-coral/30 overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 
+                      className="text-3xl font-bold text-navy mb-2"
+                      style={{ fontFamily: "'Crimson Text', serif" }}
+                    >
+                      Peer-to-Peer
+                    </h3>
+                    <p className="text-sm text-gray-600">Connect with Underwriters</p>
+                  </div>
+                  <div className="w-16 h-16 rounded-full bg-coral/20 flex items-center justify-center border-2 border-coral">
+                    <Users className="w-8 h-8 text-coral" />
                   </div>
                 </div>
 
-                {/* Decision Prompt */}
-                <div className="bg-teal/5 rounded-lg p-6 border border-teal/20 mb-8">
-                  <p className="text-center text-lg font-medium text-navy mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    Ready to find matching underwriters?
-                  </p>
-                  <p className="text-center text-sm text-gray-600">
-                    We&apos;ll match you with real underwriters willing to provide coverage
-                  </p>
-                </div>
+                {/* Fairness Badge */}
+                {fairnessProof && (
+                  <div className="bg-purple-50 rounded-lg p-3 mb-6 border border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Shuffle className="w-4 h-4 text-purple-600" />
+                        <p className="text-xs font-semibold text-purple-900">
+                          Fair Matching via Pyth Entropy
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDebugPanel(true)}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-100 text-xs py-1 px-2 h-auto"
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        Debug
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-4 justify-center">
-                  <Button
-                    onClick={handleDeclineContract}
-                    variant="outline"
-                    size="lg"
-                    className="font-semibold tracking-wide text-base px-10 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
-                    style={{ fontFamily: "'Outfit', sans-serif" }}
-                  >
-                    Start Over
-                  </Button>
-                  <Button
-                    onClick={handleAcceptClick}
-                    size="lg"
-                    className="font-semibold tracking-wide text-base px-10"
-                    style={{ 
-                      backgroundColor: 'var(--coral)',
-                      fontFamily: "'Outfit', sans-serif"
-                    }}
-                  >
-                    Find Underwriters →
-                  </Button>
-                </div>
+                {/* Loading State */}
+                {matchedUnderwriters.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="w-12 h-12 border-4 border-coral border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-sm text-gray-600">Finding matched underwriters...</p>
+                  </div>
+                )}
 
-                {/* Fine Print */}
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    By accepting this contract, you agree to the terms and conditions outlined above. 
-                    A copy of this contract will be sent to your registered email address.
-                  </p>
+                {/* Underwriters List */}
+                {matchedUnderwriters.length > 0 && (
+                  <div className="space-y-3 mb-6 max-h-[550px] overflow-y-auto pr-2">
+                    {matchedUnderwriters.map((underwriter: Underwriter) => {
+                      const premiumMatch = apiResult.match(/\$(\d+(?:,\d+)*(?:\.\d{2})?)/);
+                      const basePremium = premiumMatch ? parseFloat(premiumMatch[1].replace(/,/g, '')) : 150;
+                      const finalPremium = basePremium * underwriter.premiumMultiplier;
+                      const isSelected = selectedUnderwriter === underwriter.id;
+                      const isSBF = underwriter.id === 'uw-999'; // Meme entry
+                      
+                      return (
+                        <div
+                          key={underwriter.id}
+                          className={`bg-white/90 rounded-xl p-4 shadow-md border-2 transition-all duration-200 cursor-pointer ${
+                            isSBF 
+                              ? 'border-red-500 bg-red-50/50' 
+                              : isSelected 
+                                ? 'border-coral scale-105' 
+                                : 'border-gray-200 hover:border-coral/50'
+                          }`}
+                          onClick={() => setSelectedUnderwriter(underwriter.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Image
+                              src={underwriter.avatar}
+                              alt={underwriter.name}
+                              width={48}
+                              height={48}
+                              className="rounded-full flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="text-base font-bold text-navy truncate flex items-center gap-2">
+                                    {underwriter.name}
+                                    {isSBF && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">🚨 SCAM</span>}
+                                  </h4>
+                                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                                    <Star className={`w-3 h-3 ${isSBF ? 'text-red-500 fill-red-500' : 'text-yellow-500 fill-yellow-500'}`} />
+                                    <span className={isSBF ? 'text-red-600 font-bold' : ''}>{underwriter.reputation}</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span>{underwriter.totalPoliciesUnderwritten} policies</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`text-lg font-bold ${isSBF ? 'text-red-600' : 'text-coral'}`}>
+                                    ${finalPremium.toFixed(0)}
+                                    {isSBF && <span className="text-xs block text-red-500">😱 INSANE!</span>}
+                                  </p>
+                                  <p className="text-xs text-gray-500">/month</p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-1 mb-2">
+                                {underwriter.specialties.slice(0, 2).map((s: string) => (
+                                  <span key={s} className="px-2 py-0.5 bg-coral/10 text-coral text-xs rounded-full">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div>
+                                  <p className="text-gray-500">Coverage</p>
+                                  <p className="font-semibold text-navy">
+                                    ${(underwriter.coverageLimit / 1000).toFixed(0)}K
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Response</p>
+                                  <p className="font-semibold text-navy">{underwriter.responseTime}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Approval</p>
+                                  <p className="font-semibold text-green-600">
+                                    {underwriter.claimApprovalRate}%
+                                  </p>
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      alert(`✅ Selected ${underwriter.name}!\n\nContract would be bound on blockchain.\nThis is a demo - full integration coming soon.`);
+                                    }}
+                                    size="sm"
+                                    className="w-full font-semibold text-sm"
+                                    style={{ backgroundColor: 'var(--coral)' }}
+                                  >
+                                    Bind with {underwriter.name}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Benefits */}
+                <div className="bg-coral/10 rounded-lg p-4 border border-coral/20">
+                  <h4 className="text-xs font-bold text-navy mb-3 uppercase tracking-wide">Why Choose P2P?</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-coral mt-0.5 flex-shrink-0" />
+                      <span>Direct connection with underwriters</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-coral mt-0.5 flex-shrink-0" />
+                      <span>Competitive pricing & negotiation</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-coral mt-0.5 flex-shrink-0" />
+                      <span>Fair matching via blockchain randomness</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-coral mt-0.5 flex-shrink-0" />
+                      <span>Choose your preferred underwriter</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
+            </div>
+
+            {/* Back Button */}
+            <div className="text-center pt-6">
+              <Button
+                onClick={handleDeclineContract}
+                variant="outline"
+                size="sm"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Start Over
+              </Button>
             </div>
           </div>
         )}
 
-        {/* Icon row - Only show when wallet connected and not loading and not showing contract */}
-        {isWorldIDVerified && walletAddress && !isLoading && !showContract && (
+        {/* Icon row - Only show when wallet connected and not loading and not showing split view */}
+        {isWorldIDVerified && walletAddress && !isLoading && !showSplitView && (
           <>
             <div className="flex justify-center gap-8 mt-12 opacity-0 animate-fade-in delay-400">
               <div className="flex flex-col items-center gap-2">
@@ -999,57 +1259,15 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         </div>
       </div>
 
-      {/* Acceptance Confirmation Modal */}
-      <Modal isOpen={showAcceptModal} onClose={() => setShowAcceptModal(false)}>
-        <ModalHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-full bg-teal/10 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-teal" />
-            </div>
-            <h3 
-              className="text-2xl font-bold text-navy"
-              style={{ fontFamily: "'Crimson Text', serif" }}
-            >
-              Confirm Acceptance
-            </h3>
-          </div>
-        </ModalHeader>
-        
-        <ModalBody>
-          <p className="text-gray-700 leading-relaxed mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            Are you sure you want to accept this insurance contract?
-          </p>
-          <div className="bg-teal/5 rounded-lg p-4 border border-teal/10">
-            <p className="text-sm text-gray-600 mb-2">By accepting, you agree to:</p>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• All terms and conditions outlined in the policy quote</li>
-              <li>• The coverage details and premium specified above</li>
-              <li>• Legal binding of this insurance contract</li>
-            </ul>
-          </div>
-        </ModalBody>
-        
-        <ModalFooter>
-          <Button
-            onClick={() => setShowAcceptModal(false)}
-            variant="outline"
-            className="font-medium"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmAccept}
-            className="font-semibold"
-            style={{ 
-              backgroundColor: 'var(--teal)',
-              fontFamily: "'Outfit', sans-serif"
-            }}
-          >
-            Yes, Accept Contract
-          </Button>
-        </ModalFooter>
-      </Modal>
+      {/* Entropy Debug Panel */}
+      <EntropyDebugPanel
+        show={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
+        fairnessProof={fairnessProof || undefined}
+        underwriters={matchedUnderwriters}
+        originalOrder={undefined}
+        shuffledOrder={undefined}
+      />
     </div>
   )
 }
