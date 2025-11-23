@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { IDKitWidget, ISuccessResult, VerificationLevel } from '@worldcoin/idkit'
+import { IDKitWidget, ISuccessResult, VerificationLevel, IErrorState } from '@worldcoin/idkit'
 import { Button } from '@/app/components/ui/button'
 import { Globe } from 'lucide-react'
 
@@ -14,8 +14,10 @@ export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerif
   // Suppress the DialogTitle warning from IDKitWidget (third-party library issue)
   useEffect(() => {
     const originalError = console.error
-    console.error = (...args) => {
+    console.error = (...args: unknown[]) => {
+      // Safely check if this is the DialogTitle warning
       if (
+        args.length > 0 &&
         typeof args[0] === 'string' && 
         args[0].includes('DialogContent') && 
         args[0].includes('DialogTitle')
@@ -23,35 +25,45 @@ export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerif
         // Suppress this specific warning from IDKitWidget
         return
       }
-      originalError.apply(console, args)
+      // Only call originalError if we have valid arguments
+      if (args.length > 0) {
+        originalError.apply(console, args)
+      }
     }
     
     return () => {
       console.error = originalError
     }
   }, [])
+
+  const handleIDKitError = (error: IErrorState) => {
+    console.error('❌ IDKit Error:', error);
+    if (onError) {
+      // IErrorState may have code and other properties, handling them safely
+      const errorObj = error as { code?: string; detail?: string };
+      const errorMessage = errorObj.detail || errorObj.code || 'World ID verification failed';
+      onError(new Error(errorMessage));
+    }
+  };
+
   const handleVerify = async (proof: ISuccessResult) => {
     try {
       console.log('✅ World ID proof received:', proof);
       
-      // For demo/development: Skip backend verification and directly call onSuccess
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔧 DEV MODE: Skipping backend verification');
-        onSuccess(proof);
-        return;
-      }
-
-      // Send proof to backend for verification (production)
+      // Send proof to backend for verification
       const response = await fetch('/api/worldid/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          proof: proof.proof,
-          merkle_root: proof.merkle_root,
-          nullifier_hash: proof.nullifier_hash,
-          verification_level: proof.verification_level,
+          proof: {
+            proof: proof.proof,
+            merkle_root: proof.merkle_root,
+            nullifier_hash: proof.nullifier_hash,
+            verification_level: proof.verification_level,
+          },
+          signal: 'user_value', // Match with the signal prop
         }),
       });
 
@@ -63,31 +75,32 @@ export default function WorldIDVerification({ onSuccess, onError }: WorldIDVerif
 
       const data = await response.json();
       
-      if (data.success) {
-        onSuccess(proof);
-      } else {
-        throw new Error(data.error || 'Verification failed');
+      if (!data.success) {
+        throw new Error(data.detail || 'Verification failed');
       }
     } catch (error) {
       console.error('❌ Verification error:', error);
       if (onError) {
         onError(error as Error);
       }
+      throw error; // Re-throw to show error in IDKit
     }
   };
 
-  // Get app_id from environment variable or use staging for demo
-  const appId = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_staging_b4e6e14f3566f6e3d2f8e2a3c1b0a9d8';
-  const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verify-human';
+  // Get app_id from environment variable or use your friend's app_id for testing
+  const appId = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_4020275d788fc6f5664d986dd931e5e6';
+  const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verify';
 
   return (
     <div className="w-full">
       <IDKitWidget
         app_id={appId as `app_${string}`}
         action={action}
-        onSuccess={handleVerify}
-        verification_level={VerificationLevel.Device}
+        signal="user_value"
+        onSuccess={onSuccess}
         handleVerify={handleVerify}
+        onError={handleIDKitError}
+        verification_level={VerificationLevel.Device}
       >
         {({ open }) => (
           <Button
