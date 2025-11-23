@@ -1107,50 +1107,59 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                               className="rounded-full flex-shrink-0"
                             />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-2">
-                                <div>
-                                  <h4 className="text-base font-bold text-navy truncate flex items-center gap-2">
-                                    {underwriter.name}
-                                    {isSBF && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">🚨 SCAM</span>}
-                                  </h4>
+                              {/* Header with Name and Badge */}
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <h4 className="text-base font-bold text-navy">
+                                      {underwriter.name}
+                                    </h4>
+                                    {isSBF && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap">🚨 SCAM</span>}
+                                  </div>
                                   <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <Star className={`w-3 h-3 ${isSBF ? 'text-red-500 fill-red-500' : 'text-yellow-500 fill-yellow-500'}`} />
+                                    <Star className={`w-3 h-3 flex-shrink-0 ${isSBF ? 'text-red-500 fill-red-500' : 'text-yellow-500 fill-yellow-500'}`} />
                                     <span className={isSBF ? 'text-red-600 font-bold' : ''}>{underwriter.reputation}</span>
                                     <span className="text-gray-400">•</span>
-                                    <span>{underwriter.totalPoliciesUnderwritten} policies</span>
+                                    <span className="truncate">{underwriter.totalPoliciesUnderwritten} policies</span>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <p className={`text-lg font-bold ${isSBF ? 'text-red-600' : 'text-coral'}`}>
+                                <div className="text-right flex-shrink-0">
+                                  <p className={`text-base font-bold ${isSBF ? 'text-red-600' : 'text-coral'} whitespace-nowrap`}>
                                     ${finalPremium.toFixed(0)}
-                                    {isSBF && <span className="text-xs block text-red-500">😱 INSANE!</span>}
                                   </p>
+                                  {isSBF && <span className="text-xs text-red-500 block">😱 INSANE!</span>}
                                   <p className="text-xs text-gray-500">/month</p>
                                 </div>
                               </div>
                               
-                              <div className="flex gap-1 mb-2">
+                              {/* Specialties Tags */}
+                              <div className="flex flex-wrap gap-1 mb-2">
                                 {underwriter.specialties.slice(0, 2).map((s: string) => (
-                                  <span key={s} className="px-2 py-0.5 bg-coral/10 text-coral text-xs rounded-full">
+                                  <span key={s} className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${
+                                    isSBF ? 'bg-red-100 text-red-600' : 'bg-coral/10 text-coral'
+                                  }`}>
                                     {s}
                                   </span>
                                 ))}
                               </div>
                               
+                              {/* Stats Grid */}
                               <div className="grid grid-cols-3 gap-2 text-xs">
                                 <div>
-                                  <p className="text-gray-500">Coverage</p>
-                                  <p className="font-semibold text-navy">
+                                  <p className="text-gray-500 truncate">Coverage</p>
+                                  <p className="font-semibold text-navy truncate">
                                     ${(underwriter.coverageLimit / 1000).toFixed(0)}K
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">Response</p>
-                                  <p className="font-semibold text-navy">{underwriter.responseTime}</p>
+                                  <p className="text-gray-500 truncate">Response</p>
+                                  <p className="font-semibold text-navy truncate">{underwriter.responseTime}</p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">Approval</p>
-                                  <p className="font-semibold text-green-600">
+                                  <p className="text-gray-500 truncate">Approval</p>
+                                  <p className={`font-semibold truncate ${
+                                    isSBF ? 'text-red-600' : 'text-green-600'
+                                  }`}>
                                     {underwriter.claimApprovalRate}%
                                   </p>
                                 </div>
