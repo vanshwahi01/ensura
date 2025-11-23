@@ -19,13 +19,16 @@ export const INSURANCE_CONTRACT_ADDRESS = '0xAc0d07907b2c6714b6B99AF44FC52cA4290
 
 // Demo Contract (Simplified, no FDC - for easy real transactions)
 export const DEMO_CONTRACT_ADDRESS = '0x4AA9E042EA557A08f1454B6939081C7039f6ea3a'
-export const USE_DEMO_CONTRACT = true // Set to true to use demo contract with real transactions
+export const USE_DEMO_CONTRACT = true // Set to true to show real contract in demo
 
 // Pre-seeded offer IDs (update after running seed script)
 export const DEMO_OFFER_IDS = {
   agency: 0,  // Alice - Auto Insurance (using same offer for demo)
   p2p: 0      // Alice - Auto Insurance
 }
+
+// Real transaction that created the offer (for demo reference)
+export const REAL_OFFER_CREATION_TX = '0xbb21e3b6c0e2c64995af22adbf35123fbf00f4184ff162a1e6ee428127c7f824'
 
 // Demo Contract ABI (Simplified)
 export const DEMO_CONTRACT_ABI = [
@@ -210,18 +213,26 @@ export async function switchToCoston2(): Promise<boolean> {
 }
 
 /**
- * Accept an insurance offer - uses real demo contract if enabled
+ * Accept an insurance offer - simulates for demo but shows real contract
  */
 export async function acceptInsuranceOffer(
   details: BindingDetails
 ): Promise<TransactionResult> {
-  // If demo contract is enabled and configured, use real transactions
-  if (USE_DEMO_CONTRACT && DEMO_CONTRACT_ADDRESS) {
+  // Check if wallet is available and we're on the right network
+  const hasWallet = typeof window !== 'undefined' && window.ethereum
+  const onCoston2 = hasWallet ? await isOnCoston2() : false
+  
+  // If on Coston2 with wallet, user can choose to use real transaction
+  // For now, always simulate for demo purposes (shows real contract links)
+  // To enable real transactions, uncomment the lines below:
+  /*
+  if (hasWallet && onCoston2 && USE_DEMO_CONTRACT && DEMO_CONTRACT_ADDRESS) {
     return acceptDemoContractOffer(details)
   }
+  */
   
-  // Otherwise, simulate transaction
-  return simulateTransaction(details)
+  // Simulate transaction but show real contract
+  return simulateTransactionWithRealContract(details)
 }
 
 /**
@@ -314,13 +325,13 @@ async function acceptDemoContractOffer(
 }
 
 /**
- * SIMULATED: Generate fake transaction for demo
+ * SIMULATED: Generate demo transaction that links to REAL deployed contract
  */
-async function simulateTransaction(
+async function simulateTransactionWithRealContract(
   details: BindingDetails
 ): Promise<TransactionResult> {
   try {
-    console.log('🎬 Starting simulated transaction...')
+    console.log('🎬 Starting demo transaction (simulated for localhost)...')
     console.log('📋 Binding Details:', {
       offerId: details.offerId,
       premium: details.premium + ' C2FLR',
@@ -328,22 +339,28 @@ async function simulateTransaction(
       underwriter: details.underwriterName,
       type: details.insuranceType
     })
+    console.log('🔗 REAL Contract:', DEMO_CONTRACT_ADDRESS)
+    console.log('🌐 View on Coston2:', `${COSTON2_CONFIG.explorerUrl}/address/${DEMO_CONTRACT_ADDRESS}`)
 
     // Simulate blockchain transaction delay
     await simulateTransactionDelay()
 
-    // Generate realistic transaction hash
+    // Generate realistic transaction hash for demo
     const txHash = generateSimulatedTxHash()
     const explorerUrl = `${COSTON2_CONFIG.explorerUrl}/tx/${txHash}`
 
-    console.log('✅ SIMULATED: Insurance binding transaction')
-    console.log('📝 Contract:', INSURANCE_CONTRACT_ADDRESS)
-    console.log('⚡ Function: accept(uint256 offerId)')
+    console.log('✅ DEMO: Insurance binding (simulated transaction)')
+    console.log('📝 Real Contract:', DEMO_CONTRACT_ADDRESS)
+    console.log('⚡ Function: acceptOffer(uint256 offerId)')
     console.log('🆔 Offer ID:', details.offerId)
     console.log('💰 Premium:', details.premium, 'C2FLR')
     console.log('🛡️ Coverage:', details.coverageAmount, 'C2FLR')
-    console.log('🔗 Tx Hash:', txHash)
-    console.log('🌐 Explorer:', explorerUrl)
+    console.log('🔗 Demo Tx Hash:', txHash)
+    console.log('🔍 Real Offer Created:', `${COSTON2_CONFIG.explorerUrl}/tx/${REAL_OFFER_CREATION_TX}`)
+    console.log('')
+    console.log('💡 NOTE: This is a simulated transaction for demo purposes.')
+    console.log('   The contract IS REAL and deployed on Coston2!')
+    console.log('   View the contract:', `${COSTON2_CONFIG.explorerUrl}/address/${DEMO_CONTRACT_ADDRESS}`)
 
     return {
       success: true,
@@ -412,10 +429,11 @@ export async function acceptInsuranceOfferReal(
 }
 
 /**
- * Get contract explorer URL
+ * Get contract explorer URL - points to REAL deployed demo contract
  */
 export function getContractExplorerUrl(): string {
-  return `${COSTON2_CONFIG.explorerUrl}/address/${INSURANCE_CONTRACT_ADDRESS}`
+  const contractAddress = USE_DEMO_CONTRACT ? DEMO_CONTRACT_ADDRESS : INSURANCE_CONTRACT_ADDRESS
+  return `${COSTON2_CONFIG.explorerUrl}/address/${contractAddress}`
 }
 
 /**

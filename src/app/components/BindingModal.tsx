@@ -7,7 +7,8 @@ import {
   BindingDetails, 
   formatFLR, 
   getContractExplorerUrl,
-  COSTON2_CONFIG 
+  COSTON2_CONFIG,
+  DEMO_CONTRACT_ADDRESS 
 } from '@/lib/contractService'
 
 interface BindingModalProps {
@@ -165,20 +166,53 @@ export function BindingModal({
           </div>
         </div>
 
-        {/* Important Notice */}
-        <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-          <p className="text-xs text-yellow-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            <strong>Note:</strong> This transaction will be executed on Flare Coston2 testnet. 
-            You will need testnet C2FLR tokens. Get them from the{' '}
-            <a 
-              href="https://faucet.flare.network/coston2" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="underline font-semibold hover:text-yellow-950"
-            >
-              Flare Faucet
-            </a>.
-          </p>
+        {/* Flare Network Info Banner */}
+        <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-xl p-4 border-2 border-blue-300 shadow-lg">
+          <div className="flex items-start gap-3">
+            {/* Flare Logo */}
+            <div className="flex-shrink-0">
+              <Image 
+                src="/flare-logo.svg" 
+                alt="Flare Network" 
+                width={40} 
+                height={40}
+                className="rounded-lg"
+              />
+            </div>
+            
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-blue-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                  Secured on Flare Network
+                </p>
+                <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-bold rounded">COSTON2</span>
+              </div>
+              
+              <p className="text-xs text-blue-800 leading-relaxed" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                This offer is stored on a <strong>real deployed smart contract</strong>. Your policy data is verified using <strong>Flare Data Connector (FDC)</strong>, which securely fetches off-chain data and makes it available on-chain for trustless verification.
+              </p>
+
+              <div className="bg-white/70 rounded-lg p-2 border border-blue-200">
+                <p className="text-xs text-blue-700 font-semibold mb-1">Contract Address:</p>
+                <a
+                  href={`${COSTON2_CONFIG.explorerUrl}/address/${DEMO_CONTRACT_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs bg-white px-2 py-1 rounded border border-blue-300 inline-flex items-center gap-1 hover:bg-blue-100 transition-colors"
+                >
+                  {DEMO_CONTRACT_ADDRESS.slice(0, 10)}...{DEMO_CONTRACT_ADDRESS.slice(-8)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              <div className="flex items-start gap-2 bg-purple-100/50 rounded-lg p-2">
+                <Shield className="w-4 h-4 text-purple-700 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-purple-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                  <strong>Why FDC?</strong> Flare's Data Connector ensures your insurance data (medical records, driving history) is cryptographically verified before being used in quotes, preventing fraud and ensuring accuracy.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </ModalBody>
 

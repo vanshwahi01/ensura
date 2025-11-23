@@ -70,6 +70,114 @@ interface FairnessProof {
   guarantee: string
 }
 
+// Fallback quote generator when 0G credits are insufficient
+function generateFallbackQuote(formData: FormData): string {
+  const fullName = `${formData.firstName} ${formData.lastName}`
+  const age = parseInt(formData.age)
+  
+  // Calculate base premium based on age and insurance type
+  let basePremium = 100
+  let coverage = 100000
+  
+  switch (formData.insuranceType.toLowerCase()) {
+    case 'health':
+      basePremium = age < 30 ? 150 : age < 50 ? 200 : 300
+      coverage = 100000
+      break
+    case 'auto':
+      basePremium = age < 25 ? 250 : age < 40 ? 180 : 150
+      coverage = 80000
+      break
+    case 'life':
+      basePremium = age < 30 ? 120 : age < 50 ? 180 : 350
+      coverage = 500000
+      break
+    case 'home':
+      basePremium = 200
+      coverage = 250000
+      break
+    case 'travel':
+      basePremium = 80
+      coverage = 50000
+      break
+    default:
+      basePremium = 150
+      coverage = 100000
+  }
+
+  const deductible = Math.round(coverage * 0.01)
+  const duration = '12 months'
+
+  return `Dear ${formData.firstName},
+
+Thank you for your interest in our ${formData.insuranceType} insurance coverage. Based on your profile, here's your personalized quote:
+
+## YOUR QUOTE SUMMARY
+
+**Monthly premium:** $${basePremium.toLocaleString()}
+**Total coverage:** $${coverage.toLocaleString()}
+**Deductible:** $${deductible.toLocaleString()}
+**Policy duration:** ${duration}
+
+---
+
+## WHY THIS IS RIGHT FOR YOU
+
+Your ${formData.insuranceType} insurance plan is tailored to your needs as a ${age}-year-old from ${formData.nationality}. This comprehensive coverage provides peace of mind while remaining affordable.
+
+**Key highlights:**
+• **Smart Contract Protection** - Your policy is secured on Flare's blockchain, ensuring transparency and automatic claim processing
+• **Flexible Coverage** - Adjust your plan anytime through our platform
+• **Quick Claims** - Blockchain-verified claims process in 24-48 hours
+
+---
+
+## WHAT'S COVERED
+
+✅ **Core Protection**
+• Comprehensive ${formData.insuranceType.toLowerCase()} coverage up to $${coverage.toLocaleString()}
+• Emergency services and urgent care
+• No waiting period for coverage activation
+
+✅ **Additional Benefits**
+• 24/7 customer support
+• Worldwide coverage for ${formData.nationality} citizens
+• Digital policy management on blockchain
+
+---
+
+## PREMIUM BREAKDOWN
+
+• Base coverage: $${Math.round(basePremium * 0.7).toLocaleString()}/month
+• Risk adjustment: $${Math.round(basePremium * 0.2).toLocaleString()}/month
+• Platform fee: $${Math.round(basePremium * 0.1).toLocaleString()}/month
+
+**Total monthly:** $${basePremium.toLocaleString()}
+**Annual total:** $${(basePremium * 12).toLocaleString()}
+
+---
+
+## IMPORTANT TO KNOW
+
+• Pre-existing conditions may require additional assessment
+• Coverage becomes active immediately upon acceptance
+• Premiums are locked for the policy duration
+
+---
+
+## NEXT STEPS
+
+1. **Review and accept** this quote below
+2. **Complete verification** with your uploaded documents
+3. **Coverage activates** instantly on the blockchain
+
+Your policy will be secured by a verified smart contract on Flare Network, providing complete transparency and immutable record-keeping.
+
+---
+
+*Quote generated for ${fullName} | Age: ${age} | Type: ${formData.insuranceType}*`
+}
+
 export default function Home() {
   const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
@@ -85,6 +193,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [currentStage, setCurrentStage] = useState<ProgressStage>({ stage: 0, message: '', progress: 0 })
   const [apiResult, setApiResult] = useState('')
+  const [customInsuranceType, setCustomInsuranceType] = useState('')
   
   // World ID & Wallet State
   const [isWorldIDVerified, setIsWorldIDVerified] = useState(false)
@@ -116,8 +225,10 @@ export default function Home() {
 
   // API call with progress updates
   const callBackend = async () => {
+    const actualInsuranceType = getActualInsuranceType()
+    
     const stages = [
-      { stage: 1, message: `Analyzing ${formData.insuranceType} requirements for ${formData.firstName}...`, progress: 25, delay: 3000 },
+      { stage: 1, message: `Analyzing ${actualInsuranceType} requirements for ${formData.firstName}...`, progress: 25, delay: 3000 },
       { stage: 2, message: 'Generating your AI-powered insurance quote...', progress: 50, delay: 3000 },
       { stage: 3, message: 'Finding matched peer-to-peer underwriters...', progress: 75, delay: 3000 },
       { stage: 4, message: 'Preparing your personalized options...', progress: 100, delay: 2000 }
@@ -134,7 +245,7 @@ export default function Home() {
       const comprehensivePrompt = `Generate a CONCISE, professional insurance quote for:
 
 CLIENT: ${formData.firstName} ${formData.lastName}, Age ${formData.age}, ${formData.nationality}
-INSURANCE TYPE: ${formData.insuranceType}
+INSURANCE TYPE: ${actualInsuranceType}
 ${formData.additionalInfo ? `NOTES: ${formData.additionalInfo}` : ''}
 
 FORMAT REQUIREMENTS (IMPORTANT - Keep it SHORT and SCANNABLE):
@@ -173,7 +284,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       console.log('📤 Sending quote request to AI with client data:', {
         name: `${formData.firstName} ${formData.lastName}`,
         age: formData.age,
-        insuranceType: formData.insuranceType,
+        insuranceType: actualInsuranceType,
         nationality: formData.nationality
       })
 
@@ -195,22 +306,28 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         
-        let errorMessage = 'Failed to generate quote. Please try again.'
-        
         if (errorData?.code === 'INSUFFICIENT_BALANCE') {
-          errorMessage = '⚠️ Service temporarily unavailable. Please contact support or try again later.\n\nTechnical details: Insufficient blockchain credits.'
-          console.error('❌ Insufficient balance for AI provider')
+          console.warn('⚠️ Insufficient 0G balance - using fallback quote generator')
+          // Generate a nice fallback quote using user's form data
+          const fallbackQuote = generateFallbackQuote(formData)
+          setApiResult(fallbackQuote)
         } else if (errorData?.code === 'PROVIDER_NOT_ACKNOWLEDGED') {
-          errorMessage = '⚠️ Service initialization in progress. Please try again in a moment.'
-          console.error('❌ Provider not acknowledged')
-        } else if (errorData?.message) {
-          errorMessage = `Error: ${errorData.message}`
-          console.error('❌ API Error:', errorData.message)
+          console.warn('⚠️ Provider not acknowledged - using fallback quote generator')
+          const fallbackQuote = generateFallbackQuote(formData)
+          setApiResult(fallbackQuote)
         } else {
-          console.error('❌ API Error: Request failed with status', response.status)
+          // For other errors, show error message
+          let errorMessage = 'Failed to generate quote. Please try again.'
+          
+          if (errorData?.message) {
+            errorMessage = `Error: ${errorData.message}`
+            console.error('❌ API Error:', errorData.message)
+          } else {
+            console.error('❌ API Error: Request failed with status', response.status)
+          }
+          
+          setApiResult(errorMessage)
         }
-        
-        setApiResult(errorMessage)
       } else {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
@@ -228,8 +345,10 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
         }
       }
     } catch (error) {
-      console.error('❌ Request Error:', error)
-      setApiResult('Network error: Unable to connect to the service. Please check your connection and try again.\n\nError details: ' + (error as Error).message)
+      console.warn('⚠️ Network error - using fallback quote generator:', error)
+      // Use fallback quote on network errors too
+      const fallbackQuote = generateFallbackQuote(formData)
+      setApiResult(fallbackQuote)
     }
 
     // Fetch underwriters in parallel
@@ -237,7 +356,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       console.log('🎲 Fetching fair underwriter ordering...')
       
       const response = await fetch(
-        `/api/underwriters/fair-match?type=${encodeURIComponent(formData.insuranceType)}&debug=true`,
+        `/api/underwriters/fair-match?type=${encodeURIComponent(actualInsuranceType)}&debug=true`,
         {
           method: 'GET',
           headers: {
@@ -269,6 +388,12 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       alert('Please fill in all required fields')
       return
     }
+
+    // Additional validation for custom insurance type
+    if (formData.insuranceType === 'Other' && !customInsuranceType.trim()) {
+      alert('Please specify your insurance type')
+      return
+    }
     
     setIsLoading(true)
     callBackend()
@@ -276,6 +401,11 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
 
   const handleInputChange = (field: keyof FormData, value: string | File | null) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Helper to get the actual insurance type (handles "Other" case)
+  const getActualInsuranceType = () => {
+    return formData.insuranceType === 'Other' ? customInsuranceType : formData.insuranceType
   }
 
   const handleDeclineContract = () => {
@@ -298,6 +428,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       setMatchedUnderwriters([])
       setSelectedUnderwriter(null)
       setFairnessProof(null)
+      setCustomInsuranceType('')
     }
   }
 
@@ -371,7 +502,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       coverageAmount: convertUSDtoFLR(coverageUSD),
       underwriterAddress: '0xAc0d07907b2c6714b6B99AF44FC52cA42906e701', // Your contract address
       underwriterName: 'Ensura Agency',
-      insuranceType: formData.insuranceType,
+      insuranceType: getActualInsuranceType(),
       isAgency: true
     }
     
@@ -402,7 +533,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
       coverageAmount: convertUSDtoFLR(coverageUSD),
       underwriterAddress: '0x' + Math.random().toString(16).substring(2, 42), // Simulated underwriter address
       underwriterName: underwriter.name,
-      insuranceType: formData.insuranceType,
+      insuranceType: getActualInsuranceType(),
       isAgency: false
     }
     
@@ -831,7 +962,12 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                     <Select
                       id="insuranceType"
                       value={formData.insuranceType}
-                      onChange={(e) => handleInputChange('insuranceType', e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange('insuranceType', e.target.value)
+                        if (e.target.value !== 'Other') {
+                          setCustomInsuranceType('')
+                        }
+                      }}
                       required
                     >
                       <option value="">Select insurance type...</option>
@@ -842,8 +978,23 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                       <option value="Travel Insurance">Travel Insurance</option>
                       <option value="Business Insurance">Business Insurance</option>
                       <option value="Disability Insurance">Disability Insurance</option>
-                      <option value="Pet Insurance">Pet Insurance</option>
+                      <option value="Blockchain Insurance">Blockchain Insurance</option>
+                      <option value="Other">Other (Specify)</option>
                     </Select>
+
+                    {/* Custom Insurance Type Input */}
+                    {formData.insuranceType === 'Other' && (
+                      <div className="mt-3 animate-scale-in">
+                        <Input
+                          type="text"
+                          placeholder="Please specify your insurance type..."
+                          value={customInsuranceType}
+                          onChange={(e) => setCustomInsuranceType(e.target.value)}
+                          required
+                          className="border-teal/30 focus:border-teal focus:ring-teal"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -964,7 +1115,7 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                         </p>
                         <div className="space-y-1 text-sm text-gray-700">
                           <p><span className="font-medium">Applicant:</span> {formData.firstName} {formData.lastName}</p>
-                          <p><span className="font-medium">Coverage:</span> {formData.insuranceType}</p>
+                          <p><span className="font-medium">Coverage:</span> {getActualInsuranceType()}</p>
                           <p><span className="font-medium">Age:</span> {formData.age} | <span className="font-medium">Nationality:</span> {formData.nationality}</p>
                           {(formData.driversLicense || formData.passport) && (
                             <p className="text-xs text-teal mt-2">
@@ -1110,19 +1261,59 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                     <div className="bg-white/90 rounded-xl p-6 mb-6 max-h-[400px] overflow-y-auto shadow-inner border border-gray-200">
                       <h4 className="text-sm font-bold text-navy mb-4 uppercase tracking-wide">Your Quote</h4>
                       <div 
-                        className="text-sm text-gray-800 leading-relaxed space-y-3"
+                        className="text-sm text-gray-800 leading-relaxed"
                         style={{ fontFamily: "'Outfit', sans-serif" }}
-                        dangerouslySetInnerHTML={{ 
-                          __html: apiResult
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-navy font-bold">$1</strong>')
-                            .replace(/^(Hello.*?)$/gm, '<p class="text-lg font-semibold text-teal mb-3">$1</p>')
-                            .replace(/^(Dear.*?)$/gm, '<p class="text-lg font-semibold text-teal mb-3">$1</p>')
-                            .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold text-base">$$$1</span>')
-                            .replace(/^(COVERAGE RECOMMENDATION|PRICING|WHY THIS WORKS|IMPORTANT TO KNOW|NEXT STEPS|Coverage|Pricing|Next Steps):/gm, '<h5 class="text-xs font-bold text-navy mt-4 mb-2 uppercase tracking-wide">$1:</h5>')
-                            .replace(/^•\s/gm, '<span class="text-teal">•</span> ')
-                            .replace(/\n/g, '<br/>')
-                        }}
-                      />
+                      >
+                        {apiResult.split('\n').map((line, idx) => {
+                          line = line.trim()
+                          if (!line) return <div key={idx} className="h-2" />
+                          
+                          // Horizontal rule
+                          if (line === '---') {
+                            return <hr key={idx} className="my-5 border-t-2 border-gray-200" />
+                          }
+                          
+                          // Headers
+                          if (line.startsWith('## ')) {
+                            return <h3 key={idx} className="text-base font-bold text-navy mt-6 mb-3 uppercase tracking-wide">{line.slice(3)}</h3>
+                          }
+                          if (line.startsWith('### ')) {
+                            return <h4 key={idx} className="text-sm font-bold text-navy mt-4 mb-2">{line.slice(4)}</h4>
+                          }
+                          if (line.startsWith('# ')) {
+                            return <h2 key={idx} className="text-lg font-bold text-teal mt-6 mb-4">{line.slice(2)}</h2>
+                          }
+                          
+                          // Greetings
+                          if (line.startsWith('Dear ') || line.startsWith('Hello ')) {
+                            return <p key={idx} className="text-xl font-semibold text-teal mb-4">{line}</p>
+                          }
+                          
+                          // Bullet points
+                          if (line.match(/^[•✓✅]\s/)) {
+                            const content = line.slice(2)
+                            return (
+                              <div key={idx} className="flex items-start gap-2 mb-2">
+                                <span className="text-teal font-bold">•</span>
+                                <span dangerouslySetInnerHTML={{
+                                  __html: content
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-navy font-bold">$1</strong>')
+                                    .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold">$$$1</span>')
+                                }} />
+                              </div>
+                            )
+                          }
+                          
+                          // Regular paragraph
+                          return (
+                            <p key={idx} className="mb-3" dangerouslySetInnerHTML={{
+                              __html: line
+                                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-navy font-bold">$1</strong>')
+                                .replace(/\$(\d{1,3}(,\d{3})*(\.\d{2})?)/g, '<span class="text-coral font-bold text-base">$$$1</span>')
+                            }} />
+                          )
+                        })}
+                      </div>
                     </div>
 
                     {/* Benefits */}

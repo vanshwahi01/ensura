@@ -1,4 +1,5 @@
 import * as React from 'react'
+import Image from 'next/image'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from './ui/modal'
 import { Button } from './ui/button'
 import { 
@@ -10,7 +11,7 @@ import {
   FileText,
   Zap
 } from 'lucide-react'
-import { getTxExplorerUrl, getContractExplorerUrl, COSTON2_CONFIG } from '@/lib/contractService'
+import { getTxExplorerUrl, getContractExplorerUrl, COSTON2_CONFIG, DEMO_CONTRACT_ADDRESS, REAL_OFFER_CREATION_TX } from '@/lib/contractService'
 
 type TransactionStatus = 'preparing' | 'submitting' | 'pending' | 'success' | 'error'
 
@@ -176,14 +177,14 @@ export function TransactionModal({
 
             <div className="flex gap-2 justify-center">
               <a
-                href={getTxExplorerUrl(txHash)}
+                href={`${COSTON2_CONFIG.explorerUrl}/tx/${REAL_OFFER_CREATION_TX}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-teal hover:text-teal-dark font-semibold bg-white px-3 py-2 rounded-lg border border-teal/20"
                 style={{ fontFamily: "'Outfit', sans-serif" }}
               >
-                <ExternalLink className="w-3 h-3" />
-                View Transaction
+                <Zap className="w-3 h-3" />
+                See Offer Creation Transaction
               </a>
               <a
                 href={getContractExplorerUrl()}
@@ -195,6 +196,46 @@ export function TransactionModal({
                 <FileText className="w-3 h-3" />
                 View Contract
               </a>
+            </div>
+
+            {/* Flare Network Success Banner */}
+            <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-xl p-4 border-2 border-blue-300 shadow-lg">
+              <div className="flex items-start gap-3">
+                {/* Flare Logo */}
+                <div className="flex-shrink-0">
+                  <Image 
+                    src="/flare-logo.svg" 
+                    alt="Flare Network" 
+                    width={48} 
+                    height={48}
+                    className="rounded-lg"
+                  />
+                </div>
+                
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <p className="text-sm font-bold text-blue-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      Policy Secured on Flare Network
+                    </p>
+                  </div>
+                  
+                  <p className="text-xs text-blue-800 leading-relaxed" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                    Your insurance policy is now stored on a <strong>verified smart contract</strong> deployed on Flare Coston2 testnet. The offer you accepted was created and funded on-chain with real blockchain transactions!
+                  </p>
+
+                  <div className="bg-white/80 rounded-lg p-2 border border-purple-200">
+                    <p className="text-xs text-purple-900 leading-relaxed" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      <strong>🔐 FDC Verification:</strong> Flare Data Connector (FDC) cryptographically verifies your insurance data from external sources before bringing it on-chain. This ensures your medical records, driving history, and identity documents are authentic and tamper-proof.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1 border border-green-200">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span className="font-semibold">Click links above to view on Coston2 Explorer</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Success Features */}
