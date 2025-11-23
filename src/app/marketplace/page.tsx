@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/app/components/ui/button'
 import { Shield, Star, TrendingUp, Lock, CheckCircle2, ArrowLeft, Shuffle, Info, Eye } from 'lucide-react'
@@ -95,7 +95,7 @@ const mockUnderwriters: Underwriter[] = [
   }
 ]
 
-export default function MarketplacePage() {
+ function MarketplaceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedUnderwriter, setSelectedUnderwriter] = useState<string | null>(null)
@@ -570,3 +570,17 @@ export default function MarketplacePage() {
   )
 }
 
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-teal/5 to-coral/5">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-outfit">Loading marketplace...</p>
+        </div>
+      </div>
+    }>
+      <MarketplaceContent />
+    </Suspense>
+  )
+}
