@@ -18,10 +18,19 @@ contract InsuranceContract is ReentrancyGuard {
         bytes32 underwritingDataHash; // Hash of FDC-verified underwriting data
     }
 
-    // Data structure for data transporation
+    // Data structure for data transportation from FDC attestation
     struct DataTransportObject {
-    uint256 premium;
-}
+        string quoteId;
+        address requesterAddress;
+        uint256 timestamp;
+        uint256 premium;
+        uint256 coverageAmount;
+        uint256 riskScore;
+        uint256 validUntil;
+        string aiProvider;
+        string aiModel;
+        string responseHash;
+    }
 
     // Data structure for an offer
     struct Offer {
@@ -116,17 +125,12 @@ contract InsuranceContract is ReentrancyGuard {
     /**
      * @notice Provider makes an offer with FDC-verified AI risk assessment
      * @param quoteRequestId The quote request ID
-     * @param premium Premium amount in wei
-     * @param coverageAmount Coverage amount in wei
-     * @param validUntil Offer expiry timestamp
-     * @param proof FDC proof containing AI risk assessment (Web2Json attestation)
+     * @param proof FDC proof containing AI risk assessment with premium, coverage, and validity (Web2Json attestation)
      * @return offerId The ID of the created offer
+     * @dev Premium, coverage amount, and validity are extracted from the FDC-verified proof
      */
     function offer(
         uint256 quoteRequestId,
-        uint256 premium,
-        uint256 coverageAmount,
-        uint256 validUntil,
         IWeb2Json.Proof calldata proof
     ) external returns (uint256 offerId) {
         require(quoteRequestId < quoteRequests.length, "Invalid quoteRequestId");
@@ -139,25 +143,30 @@ contract InsuranceContract is ReentrancyGuard {
             "FDC: Risk assessment verification failed"
         );
 
-        // TODO: Get premium out of response body
-        // Extract and hash the risk assessment data
-        DataTransportObject memory dto = abi.decode(data.data.responseBody.abiEncodedData, (DataTransportObject));
-        // bytes32 assessmentHash = keccak256(abi.encode(proof.data.responseBody));
+        // Extract quote data from FDC-verified response
+        DataTransportObject memory dto = abi.decode(
+            proof.data.responseBody.abiEncodedData,
+            (DataTransportObject)
+        );
+        
+        // Hash the risk assessment data for verification
+        bytes32 assessmentHash = keccak256(abi.encode(proof.data.responseBody));
 
         offerId = offers.length;
         offers.push(Offer({
             quoteRequestId: quoteRequestId,
             provider: msg.sender,
             premium: dto.premium,
-            coverageAmount: coverageAmount,
-            validUntil: validUntil,
+            coverageAmount: dto.coverageAmount,
+            validUntil: dto.validUntil,
             accepted: false,
             premiumPaid: false,
             coverageFunded: false,
             payoutClaimed: false,
+            riskAssessmentHash: assessmentHash
         }));
         
-        emit OfferMade(offerId, quoteRequestId, msg.sender, premium, coverageAmount, validUntil);
+        emit OfferMade(offerId, quoteRequestId, msg.sender, dto.premium, dto.coverageAmount, dto.validUntil);
     }
 
     // Function: provider deposits funds to fund coverage

@@ -26,23 +26,23 @@ async function checkBalances() {
     const wallet = new ethers.Wallet(privateKey, provider);
     const broker = await createZGComputeNetworkBroker(wallet);
 
-    console.log(`📍 Wallet Address: ${wallet.address}\n`);
+    console.log('📍 Wallet Address: ${wallet.address}\n');
 
     // 1. Check wallet balance
     const walletBalance = await provider.getBalance(wallet.address);
     console.log("💰 WALLET BALANCE:");
-    console.log(`   ${ethers.formatEther(walletBalance)} OG`);
+    console.log('   ${ethers.formatEther(walletBalance)} OG');
     console.log();
 
     // 2. Check ledger balance
     try {
       const ledgerAccount = await broker.ledger.getLedger();
       console.log("📊 LEDGER ACCOUNT:");
-      console.log(`   Raw data:`, JSON.stringify(ledgerAccount, (_, v) => typeof v === 'bigint' ? v.toString() : v));
+      console.log('   Raw data:', JSON.stringify(ledgerAccount, (_, v) => typeof v === 'bigint' ? v.toString() : v));
       
       const balance = (ledgerAccount as any).balance || (ledgerAccount as any)[0] || BigInt(0);
       const balanceOG = typeof balance === 'bigint' ? ethers.formatEther(balance) : '0';
-      console.log(`   Balance: ${balanceOG} OG`);
+      console.log('   Balance: ${balanceOG} OG');
       console.log();
     } catch (error: any) {
       console.log("❌ LEDGER ACCOUNT: Not found or error:", error.message);
@@ -59,15 +59,15 @@ async function checkBalances() {
     console.log("🔗 PROVIDER ACCOUNT BALANCES:");
     for (const prov of providers) {
       try {
-        const account = await broker.ledger.getAccount(prov.address, "inference");
+        const account = await broker.ledger.getLedger();
         const balance = (account as any).balance || (account as any)[0] || BigInt(0);
         const balanceOG = typeof balance === 'bigint' ? ethers.formatEther(balance) : '0';
         
         if (parseFloat(balanceOG) > 0) {
-          console.log(`   ✅ ${prov.name}:`);
-          console.log(`      Address: ${prov.address}`);
-          console.log(`      Balance: ${balanceOG} OG`);
-          console.log(`      💡 You can request a refund for this amount!`);
+          console.log('   ✅ ${prov.name}:');
+          console.log('      Address: ${prov.address}');
+          console.log('      Balance: ${balanceOG} OG');
+          console.log('      💡 You can request a refund for this amount!');
           console.log();
         }
       } catch (error: any) {
