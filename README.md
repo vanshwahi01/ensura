@@ -1,4 +1,4 @@
-# PeerSurance
+# Ensura
 
 
 ![Last Commit](https://img.shields.io/github/last-commit/vanshwahi01/ensura)
@@ -113,7 +113,7 @@ Click **"Get Your Quote"** to submit your application.
 #### 2. AI-Powered Quote Generation
 
 
-After submission, your application goes through a 4-stage analysis process powered by the 0G decentralized compute network:
+After submission, your application goes through a detailed stage analysis process powered by the 0G decentralized compute network:
 
 
 **Stage 1: Data Analysis**
