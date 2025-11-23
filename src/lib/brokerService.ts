@@ -109,7 +109,7 @@ class BrokerService {
       const balanceNum = parseFloat(ethers.formatEther(balance));
       const totalBalanceNum = parseFloat(ethers.formatEther(totalBalance));
 
-      console.log(`💰 Ledger balance: ${balanceNum.toFixed(4)} OG (Total: ${totalBalanceNum.toFixed(4)} OG)`);
+      console.log('💰 Ledger balance: ${balanceNum.toFixed(4)} OG (Total: ${totalBalanceNum.toFixed(4)} OG)');
 
       // Check if we need to fund the account
       if (balanceNum === 0 && totalBalanceNum === 0) {
@@ -123,7 +123,7 @@ class BrokerService {
           console.log(`⚠️  Low ledger balance (${balanceNum.toFixed(4)} OG), consider adding more funds for optimal usage`);
         }
       } else {
-        console.log(`✅ Ledger has sufficient balance: ${balanceNum.toFixed(4)} OG`);
+        console.log('✅ Ledger has sufficient balance: ${balanceNum.toFixed(4)} OG');
       }
     } catch (error: any) {
       // If account doesn't exist at all, create it with addLedger
@@ -163,18 +163,18 @@ class BrokerService {
 
     if (maxLedgerAmount < 0.1) {
       throw new Error(
-        `Insufficient wallet balance. You have ${availableOG.toFixed(4)} OG but need at least 0.12 OG (0.1 for ledger + 0.02 for gas). ` +
-        `Get more testnet tokens from https://faucet.0g.ai`
+        'Insufficient wallet balance. You have ${availableOG.toFixed(4)} OG but need at least 0.12 OG (0.1 for ledger + 0.02 for gas). ' +
+        'Get more testnet tokens from https://faucet.0g.ai'
       );
     }
 
     if (maxLedgerAmount < minRecommended) {
-      console.log(`⚠️  Warning: Wallet has ${availableOG.toFixed(4)} OG. Recommended: ${minRecommended} OG or more for optimal usage.`);
+      console.log('⚠️  Warning: Wallet has ${availableOG.toFixed(4)} OG. Recommended: ${minRecommended} OG or more for optimal usage.');
     }
 
     // Use most of what we have, but cap at 10 OG to keep some in wallet for future operations
     const ledgerAmount = Math.min(maxLedgerAmount, 10);
-    console.log(`🔨 Funding ledger with ${ledgerAmount.toFixed(4)} OG (leaving ${gasReserve.toFixed(2)} OG for gas)...`);
+    console.log('🔨 Funding ledger with ${ledgerAmount.toFixed(4)} OG (leaving ${gasReserve.toFixed(2)} OG for gas)...');
 
     try {
       // addLedger() creates a NEW ledger account (fails if account exists)
@@ -187,11 +187,12 @@ class BrokerService {
       // Verify the ledger balance
       try {
         const newAccount = await this.broker.ledger.getLedger();
-        if (newAccount.balance) {
-          const finalBalance = ethers.formatEther(newAccount.balance);
+        const { balance: newBalance } = this.parseAccountBalance(newAccount);
+        if (newBalance) {
+          const finalBalance = ethers.formatEther(newBalance);
           console.log(`✅ Ledger balance confirmed: ${finalBalance} OG`);
           
-          if (newAccount.balance < ethers.parseEther("1.0")) {
+          if (newBalance < ethers.parseEther("1.0")) {
             console.log("⚠️  Note: Balance is below 1 OG. You may need to add more for multiple queries.");
           }
         } else {
@@ -203,10 +204,10 @@ class BrokerService {
     } catch (createError: any) {
       if (createError.code === 'INSUFFICIENT_FUNDS') {
         throw new Error(
-          `Insufficient funds in wallet (${availableOG.toFixed(4)} OG). Get testnet tokens from: https://faucet.0g.ai`
+          'Insufficient funds in wallet (${availableOG.toFixed(4)} OG). Get testnet tokens from: https://faucet.0g.ai'
         );
       }
-      throw new Error(`Failed to create new ledger: ${createError.message}`);
+      throw new Error('Failed to create new ledger: ${createError.message}');
     }
   }
 
@@ -234,18 +235,18 @@ class BrokerService {
 
     if (maxDepositAmount < 0.1) {
       throw new Error(
-        `Insufficient wallet balance. You have ${availableOG.toFixed(4)} OG but need at least 0.12 OG (0.1 for deposit + 0.02 for gas). ` +
-        `Get more testnet tokens from https://faucet.0g.ai`
+        'Insufficient wallet balance. You have ${availableOG.toFixed(4)} OG but need at least 0.12 OG (0.1 for deposit + 0.02 for gas). ' +
+        'Get more testnet tokens from https://faucet.0g.ai'
       );
     }
 
     if (maxDepositAmount < minRecommended) {
-      console.log(`⚠️  Warning: Wallet has ${availableOG.toFixed(4)} OG. Recommended: ${minRecommended} OG or more for optimal usage.`);
+      console.log('⚠️  Warning: Wallet has ${availableOG.toFixed(4)} OG. Recommended: ${minRecommended} OG or more for optimal usage.');
     }
 
     // Use most of what we have, but cap at 10 OG to keep some in wallet
     const depositAmount = Math.min(maxDepositAmount, 10);
-    console.log(`💸 Depositing ${depositAmount.toFixed(4)} OG to existing ledger (leaving ${gasReserve.toFixed(2)} OG for gas)...`);
+    console.log('💸 Depositing ${depositAmount.toFixed(4)} OG to existing ledger (leaving ${gasReserve.toFixed(2)} OG for gas)...');
 
     try {
       // depositFund() adds to existing ledger balance
@@ -258,11 +259,12 @@ class BrokerService {
       // Verify the ledger balance
       try {
         const account = await this.broker.ledger.getLedger();
-        if (account.balance) {
-          const finalBalance = ethers.formatEther(account.balance);
+        const { balance: accountBalance } = this.parseAccountBalance(account);
+        if (accountBalance) {
+          const finalBalance = ethers.formatEther(accountBalance);
           console.log(`✅ Ledger balance confirmed: ${finalBalance} OG`);
           
-          if (account.balance < ethers.parseEther("1.0")) {
+          if (accountBalance < ethers.parseEther("1.0")) {
             console.log("⚠️  Note: Balance is below 1 OG. You may need to add more for multiple queries.");
           }
         } else {
@@ -274,10 +276,78 @@ class BrokerService {
     } catch (depositError: any) {
       if (depositError.code === 'INSUFFICIENT_FUNDS') {
         throw new Error(
-          `Insufficient funds in wallet (${availableOG.toFixed(4)} OG). Get testnet tokens from: https://faucet.0g.ai`
+          'Insufficient funds in wallet (${availableOG.toFixed(4)} OG). Get testnet tokens from: https://faucet.0g.ai'
         );
       }
-      throw new Error(`Failed to deposit funds to ledger: ${depositError.message}`);
+      throw new Error('Failed to deposit funds to ledger: ${depositError.message}');
+    }
+  }
+
+  /**
+   * Auto-refill ledger from wallet if balance is below threshold
+   * @param currentBalance Current ledger balance in OG
+   * @param threshold Minimum threshold to trigger refill (default: 0.2 OG)
+   * @returns true if refill was performed, false if not needed
+   */
+  private async autoRefillLedger(currentBalance: number, threshold: number = 0.2): Promise<boolean> {
+    if (!this.broker || !this.wallet || !this.provider) {
+      throw new Error("Broker not initialized");
+    }
+
+    // Check if refill is needed
+    if (currentBalance >= threshold) {
+      return false; // No refill needed
+    }
+
+    console.log('🔄 Auto-refill triggered: Ledger balance (${currentBalance.toFixed(4)} OG) is below threshold (${threshold} OG)');
+
+    // Check wallet balance
+    const walletBalance = await this.provider.getBalance(this.wallet.address);
+    const availableOG = parseFloat(ethers.formatEther(walletBalance));
+
+    console.log(`💰 Wallet balance: ${availableOG.toFixed(4)} OG`);
+
+    // Calculate how much we can deposit (leave 0.02 for gas)
+    const gasReserve = 0.02;
+    const maxDepositAmount = Math.max(0, availableOG - gasReserve);
+
+    if (maxDepositAmount < 0.1) {
+      throw new Error(
+        'Auto-refill failed: Insufficient wallet balance. You have ${availableOG.toFixed(4)} OG but need at least 0.12 OG (0.1 for deposit + 0.02 for gas). ' +
+        'Get more testnet tokens from https://faucet.0g.ai'
+      );
+    }
+
+    // Target: Bring ledger back to 2 OG, or use what we have available (capped at 5 OG)
+    const targetRefill = Math.min(2.0, maxDepositAmount, 5.0);
+    
+    console.log('💸 Auto-depositing ${targetRefill.toFixed(4)} OG to ledger...');
+
+    try {
+      await this.broker.ledger.depositFund(targetRefill);
+      console.log('✅ Auto-refill successful! Deposited ${targetRefill.toFixed(4)} OG');
+
+      // Wait for confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Verify new balance
+      try {
+        const account = await this.broker.ledger.getLedger();
+        const { balance } = this.parseAccountBalance(account);
+        const newBalance = parseFloat(ethers.formatEther(balance));
+        console.log('✅ New ledger balance: ${newBalance.toFixed(4)} OG');
+      } catch (verifyError) {
+        console.log("⚠️  Auto-refill completed but balance verification pending");
+      }
+
+      return true;
+    } catch (depositError: any) {
+      if (depositError.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error(
+          'Auto-refill failed: Insufficient wallet funds (${availableOG.toFixed(4)} OG). Get testnet tokens from: https://faucet.0g.ai'
+        );
+      }
+      throw new Error('Auto-refill failed: ${depositError.message}');
     }
   }
 
@@ -296,16 +366,16 @@ class BrokerService {
     }
 
     try {
-      console.log(`🔧 Setting up provider ${providerAddress}...`);
+      console.log('🔧 Setting up provider ${providerAddress}...');
 
       // Step 1: Acknowledge provider (one-time per provider)
       try {
         await this.broker.inference.acknowledgeProviderSigner(providerAddress);
-        console.log(`✅ Provider acknowledged: ${providerAddress}`);
+        console.log('✅ Provider acknowledged: ${providerAddress}');
       } catch (ackError: any) {
         if (ackError.message?.includes('AlreadyAcknowledged') ||
             ackError.message?.includes('already acknowledged')) {
-          console.log(`✓ Provider already acknowledged: ${providerAddress}`);
+          console.log('✓ Provider already acknowledged: ${providerAddress}');
         } else {
           throw ackError;
         }
@@ -335,12 +405,12 @@ class BrokerService {
             const { balance: newBalance } = this.parseAccountBalance(newAccount);
             const newBalanceNum = parseFloat(ethers.formatEther(newBalance));
             
-            console.log(`💰 Ledger balance after funding: ${newBalanceNum.toFixed(4)} OG`);
+            console.log('💰 Ledger balance after funding: ${newBalanceNum.toFixed(4)} OG');
             
             if (newBalanceNum < minTransfer) {
               throw new Error(
-                `Failed to fund ledger sufficiently. Current balance: ${newBalanceNum.toFixed(4)} OG. ` +
-                `Need at least ${minTransfer} OG. Get more tokens from https://faucet.0g.ai`
+                'Failed to fund ledger sufficiently. Current balance: ${newBalanceNum.toFixed(4)} OG. ' +
+                'Need at least ${minTransfer} OG. Get more tokens from https://faucet.0g.ai'
               );
             }
             
@@ -348,20 +418,42 @@ class BrokerService {
             ledgerBalanceNum = newBalanceNum;
           } catch (fundError: any) {
             throw new Error(
-              `Cannot fund ledger: ${fundError.message}. Get tokens from https://faucet.0g.ai`
+              'Cannot fund ledger: ${fundError.message}. Get tokens from https://faucet.0g.ai'
             );
           }
         } else if (ledgerBalanceNum === 0 && totalBalanceNum > 0) {
           // Special case: funds exist but are showing as unavailable
-          console.log(`⚠️  Strange state: ${totalBalanceNum.toFixed(4)} OG total but 0 OG available.`);
-          console.log(`    This may indicate funds are locked. Using totalBalance for transfer...`);
+          console.log('⚠️  Strange state: ${totalBalanceNum.toFixed(4)} OG total but 0 OG available.');
+          console.log('    This may indicate funds are locked. Using totalBalance for transfer...');
           ledgerBalanceNum = totalBalanceNum;
+        }
+
+        // Auto-refill check: If balance is below 0.2 OG, automatically top up from wallet
+        if (ledgerBalanceNum < 0.2) {
+          console.log('📊 Ledger balance (${ledgerBalanceNum.toFixed(4)} OG) is low, attempting auto-refill...');
+          try {
+            const refilled = await this.autoRefillLedger(ledgerBalanceNum, 0.2);
+            if (refilled) {
+              // Re-check balance after refill
+              const updatedAccount = await this.broker.ledger.getLedger();
+              const { balance: updatedBalance } = this.parseAccountBalance(updatedAccount);
+              ledgerBalanceNum = parseFloat(ethers.formatEther(updatedBalance));
+              console.log('✅ Ledger refilled! New balance: ${ledgerBalanceNum.toFixed(4)} OG');
+            }
+          } catch (refillError: any) {
+            // If auto-refill fails, throw helpful error
+            console.error(`❌ Auto-refill failed: ${refillError.message}`);
+            throw new Error(
+              `Ledger balance too low (${ledgerBalanceNum.toFixed(4)} OG) and auto-refill failed. ` +
+              `${refillError.message}`
+            );
+          }
         }
 
         if (ledgerBalanceNum < minTransfer) {
           throw new Error(
-            `Insufficient ledger balance (${ledgerBalanceNum.toFixed(4)} OG). Need at least ${minTransfer} OG to transfer to provider. ` +
-            `Add more funds using the /api/ai/setup endpoint with action 'addLedger' or get tokens from https://faucet.0g.ai`
+            'Insufficient ledger balance (${ledgerBalanceNum.toFixed(4)} OG). Need at least ${minTransfer} OG to transfer to provider. ' +
+            'Add more funds using the /api/ai/setup endpoint with action addLedger or get tokens from https://faucet.0g.ai'
           );
         }
 
@@ -380,7 +472,7 @@ class BrokerService {
           transferAmount
         );
 
-        console.log(`✅ Transferred ${actualTransfer.toFixed(4)} OG to provider`);
+        console.log('✅ Transferred ${actualTransfer.toFixed(4)} OG to provider');
 
         // Wait for transaction to confirm
         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -389,7 +481,7 @@ class BrokerService {
         if (transferError.message?.includes('insufficient') ||
             transferError.message?.includes('InsufficientBalance')) {
           throw new Error(
-            `Insufficient ledger balance. Add more funds using the /api/ai/setup endpoint with action 'addLedger' first.`
+            'Insufficient ledger balance. Add more funds using the /api/ai/setup endpoint with action addLedger first.'
           );
         }
         throw transferError;
@@ -397,7 +489,7 @@ class BrokerService {
 
       // Mark as set up
       this.acknowledgedProviders.add(providerAddress);
-      console.log(`✅ Provider ${providerAddress} is ready for queries!`);
+      console.log('✅ Provider ${providerAddress} is ready for queries!');
 
     } catch (error: any) {
       console.error('❌ Failed to setup provider:', error);
@@ -452,9 +544,9 @@ class BrokerService {
 
     try {
       await this.broker!.ledger.depositFund(amount);
-      return `✅ Deposited ${amount} OG to ledger successfully`;
+      return '✅ Deposited ${amount} OG to ledger successfully';
     } catch (error: any) {
-      throw new Error(`Failed to deposit funds: ${error.message}`);
+      throw new Error('Failed to deposit funds: ${error.message}');
     }
   }
 
@@ -467,9 +559,9 @@ class BrokerService {
 
     try {
       await this.broker!.ledger.addLedger(amount);
-      return `✅ Added ${amount} OG to ledger successfully`;
+      return '✅ Added ${amount} OG to ledger successfully';
     } catch (error: any) {
-      throw new Error(`Failed to add funds to ledger: ${error.message}`);
+      throw new Error('Failed to add funds to ledger: ${error.message}');
     }
   }
 
@@ -493,7 +585,7 @@ class BrokerService {
         address
       };
     } catch (error: any) {
-      throw new Error(`Failed to get balance: ${error.message}`);
+      throw new Error('Failed to get balance: ${error.message}');
     }
   }
 
@@ -506,12 +598,12 @@ class BrokerService {
     
     try {
       await this.broker!.inference.acknowledgeProviderSigner(providerAddress);
-      return `✅ Provider ${providerAddress} acknowledged successfully`;
+      return '✅ Provider ${providerAddress} acknowledged successfully';
     } catch (error: any) {
       if (error.message?.includes('AlreadyAcknowledged')) {
-        return `✓ Provider ${providerAddress} already acknowledged`;
+        return '✓ Provider ${providerAddress} already acknowledged';
       }
-      throw new Error(`Failed to acknowledge provider: ${error.message}`);
+      throw new Error('Failed to acknowledge provider: ${error.message}');
     }
   }
 
@@ -526,9 +618,9 @@ class BrokerService {
     try {
       const transferAmount = ethers.parseEther(amount.toString());
       await this.broker!.ledger.transferFund(providerAddress, "inference", transferAmount);
-      return `✅ Successfully transferred ${amount} OG to provider ${providerAddress}`;
+      return '✅ Successfully transferred ${amount} OG to provider ${providerAddress}';
     } catch (error: any) {
-      throw new Error(`Failed to transfer funds to provider: ${error.message}`);
+      throw new Error('Failed to transfer funds to provider: ${error.message}');
     }
   }
 
@@ -553,7 +645,7 @@ class BrokerService {
         )?.[0] || 'Unknown'
       }));
     } catch (error: any) {
-      throw new Error(`Failed to list services: ${error.message}`);
+      throw new Error('Failed to list services: ${error.message}');
     }
   }
 
@@ -662,16 +754,30 @@ class BrokerService {
       // Debug: Log the full completion response
       console.log('🔍 Full completion response:', JSON.stringify(completion, null, 2));
 
-      // Process response - some models use reasoning_content instead of content
+      // Process response - extract only the actual content, not reasoning
       const message = completion.choices[0]?.message;
-      const content = message?.content || (message as any)?.reasoning_content || null;
+      const content = message?.content || null;
       const chatId = completion.id;
 
       console.log('📝 Extracted content:', content);
       console.log('🆔 Chat ID:', chatId);
       
+      // Check if we got a valid response
       if (!content) {
-        console.warn('⚠️  No content in response. Message object:', JSON.stringify(message, null, 2));
+        const finishReason = completion.choices[0]?.finish_reason;
+        console.warn('⚠️  No content in response.');
+        console.warn('Finish reason:', finishReason);
+        console.warn('Message object:', JSON.stringify(message, null, 2));
+        
+        // If the model hit token limit during reasoning, provide a helpful error
+        if (finishReason === 'length' && (message as any)?.reasoning_content) {
+          throw new Error(
+            'The AI model exceeded token limit while processing your request. ' +
+            'The response was not completed. Please try with a shorter question or contact support.'
+          );
+        }
+        
+        throw new Error('No response content received from AI model. Please try again.');
       }
 
       // Process payment - chatId is optional for verifiable services
@@ -686,7 +792,7 @@ class BrokerService {
           content,
           metadata: {
             model,
-            isValid,
+            isValid: isValid || false,
             provider: providerAddress,
             chatId,
             responseFormat: options?.responseFormat
@@ -717,7 +823,7 @@ class BrokerService {
       // Enhanced error handling with specific guidance
       if (error.message.includes('Provider not responding')) {
         throw new Error(
-          `Provider ${providerAddress} is not responding. Try using another provider from the service list.`
+          'Provider ${providerAddress} is not responding. Try using another provider from the service list.'
         );
       }
       if (error.message.includes('Insufficient balance')) {
@@ -725,7 +831,7 @@ class BrokerService {
           'Insufficient balance. Please add funds to your account before making requests.'
         );
       }
-      throw new Error(`Query failed: ${error.message}`);
+      throw new Error('Query failed: ${error.message}');
     }
   }
 
@@ -740,9 +846,9 @@ class BrokerService {
     try {
       const refundAmount = ethers.parseEther(amount.toString());
       await this.broker!.ledger.retrieveFund("inference", Number(refundAmount));
-      return `✅ Refund of ${amount} OG requested successfully`;
+      return '✅ Refund of ${amount} OG requested successfully';
     } catch (error: any) {
-      throw new Error(`Failed to request refund: ${error.message}`);
+      throw new Error('Failed to request refund: ${error.message}');
     }
   }
 
@@ -786,7 +892,7 @@ class BrokerService {
       const providerAccounts: any[] = [];
       for (const prov of providers) {
         try {
-          const account = await this.broker.ledger.getAccount(prov.address, "inference");
+          const account = await (this.broker.ledger as any).getAccount(prov.address, "inference");
           const accountData = sanitize(account);
           providerAccounts.push({
             provider: prov.name,
@@ -821,7 +927,7 @@ class BrokerService {
           : []
       };
     } catch (error: any) {
-      throw new Error(`Diagnostic failed: ${error.message}`);
+      throw new Error('Diagnostic failed: ${error.message}');
     }
   }
 
@@ -854,7 +960,7 @@ class BrokerService {
 
     for (const prov of providers) {
       try {
-        const account = await this.broker.ledger.getAccount(prov.address, "inference");
+        const account = await (this.broker.ledger as any).getAccount(prov.address, "inference");
         const balance = (account as any).balance || (account as any)[0] || BigInt(0);
         
         if (balance > 0) {
@@ -862,7 +968,7 @@ class BrokerService {
             name: prov.name,
             address: prov.address,
             balance: ethers.formatEther(balance),
-            balanceOG: `${ethers.formatEther(balance)} OG`,
+            balanceOG: '${ethers.formatEther(balance)} OG',
             canRefund: true
           });
         }

@@ -91,7 +91,7 @@ Use precise technical language while remaining accessible.`
 export const DEFAULT_AI_CONFIG = {
   responseFormat: 'concise' as const,  // Use concise format by default
   temperature: 0.7,                     // Balanced creativity/accuracy
-  maxTokens: 1500,                      // Increased for reasoning models (reasoning + answer)
+  maxTokens: 3000,                      // Sufficient for reasoning models (reasoning + answer)
   systemPrompt: DEFAULT_SYSTEM_PROMPT   // Default Ensura prompt
 };
 
