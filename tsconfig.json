@@ -33,5 +33,5 @@
     "hardhat.config.ts",
     "scripts/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "ignition", "scripts", "contracts", "test", "hardhat.config.js"]
 }
