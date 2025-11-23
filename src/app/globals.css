@@ -67,6 +67,86 @@
   }
 }
 
+/* Ensure proper styling for number inputs */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* File input styling */
+input[type="file"]::file-selector-button {
+  display: none;
+}
+
+/* Scrollbar styling for textareas */
+textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: var(--teal);
+  border-radius: 4px;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--teal-dark);
+}
+
+/* Quote content styling */
+.quote-content strong {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.quote-content h4 {
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(13, 115, 119, 0.2);
+}
+
+.quote-content p {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.quote-content ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5rem 0;
+}
+
+.quote-content li {
+  padding-left: 1.5rem;
+  position: relative;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.quote-content li:before {
+  content: "•";
+  color: var(--teal);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

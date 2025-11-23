@@ -16,7 +16,7 @@ const crimsonText = Crimson_Text({
 });
 
 export const metadata: Metadata = {
-  title: "HLife - You are safe with us",
+  title: "Ensura - You are safe with us",
   description: "Premium insurance services for your peace of mind",
 };
 
