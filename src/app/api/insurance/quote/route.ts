@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
 import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 import { getSystemPrompt } from '@/lib/aiConfig';
 
@@ -18,6 +17,19 @@ import { getSystemPrompt } from '@/lib/aiConfig';
  * POST /api/insurance/quote - Generate new quote
  * GET /api/insurance/quote?id=<quoteId> - Retrieve quote for FDC attestation
  */
+
+// In-memory storage for quotes (simple storage for local dev)
+const quoteStore = new Map<string, any>();
+
+const storage = {
+  async set(key: string, value: any) { 
+    quoteStore.set(key, value); 
+    return 'OK'; 
+  },
+  async get(key: string) { 
+    return quoteStore.get(key) || null; 
+  }
+};
 
 interface InsuranceQuote {
   id: string;
@@ -106,7 +118,7 @@ Format your response as a clear insurance quote that includes all pricing detail
       }
     };
 
-    await kv.set(`quote:${quoteId}`, quote, { ex: 86400 });
+    await storage.set(`quote:${quoteId}`, quote);
 
     return NextResponse.json({
       success: true,
@@ -154,7 +166,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const quote = await kv.get<InsuranceQuote>(`quote:${quoteId}`)
+    const quote = await storage.get(`quote:${quoteId}`) as InsuranceQuote | null;
 
     if (!quote) {
       return NextResponse.json(
