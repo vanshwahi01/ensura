@@ -25,7 +25,7 @@ const FDC_VERIFIER_URL = process.env.WEB2JSON_VERIFIER_URL_TESTNET || "https://w
 const FDC_API_KEY = process.env.FDC_API_KEY || "";
 const DA_LAYER_URL = process.env.COSTON2_DA_LAYER_URL || "https://ctn2-data-availability.flare.network/";
 // Hardcoded Vercel URL for FDC attestation (publicly accessible)
-const API_BASE_URL = "https://ensura-p5xws1evp-vanshs-projects-8555b473.vercel.app";
+const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // FDC Contract addresses on Coston2
 const FDC_HUB_ADDRESS = "0x7B0c357876670D9c0Bb1C0e62e5b33a0fc47E8F7";
@@ -166,7 +166,17 @@ async function prepareAttestationRequest(quoteUrl: string) {
   console.log("✅ Attestation request prepared");
   console.log("  Response:", JSON.stringify(data, null, 2).substring(0, 200) + "...");
   
-  return data.abiEncodedRequest || data;
+  // Check if the verifier returned an error status
+  if (data.status && data.status.includes("INVALID")) {
+    throw new Error(`FDC Verifier Error: ${data.status}. Check if your API endpoint is publicly accessible and returns valid JSON.`);
+  }
+  
+  // Validate that we have the expected abiEncodedRequest
+  if (!data.abiEncodedRequest) {
+    throw new Error(`FDC Verifier did not return abiEncodedRequest. Response: ${JSON.stringify(data)}`);
+  }
+  
+  return data.abiEncodedRequest;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 import { getSystemPrompt } from '@/lib/aiConfig';
+import { kv } from '@vercel/kv';
 
 /**
  * Insurance Quote API Endpoint
@@ -108,23 +109,20 @@ Format your response as a clear insurance quote that includes all pricing detail
       }
     };
 
-    // Store quote
-    quoteStore.set(quoteId, quote);
-
-    console.log('✅ Quote generated:', quoteId);
+    await kv.set(`quote:${quoteId}`, quote, { ex: 86400 });
 
     return NextResponse.json({
       success: true,
       quote: {
         id: quote.id,
-        premium: quote.premium,
-        coverageAmount: quote.coverageAmount,
+        premium: quote.premium.toString(),
+        coverageAmount: quote.coverageAmount.toString(),
         riskScore: quote.riskScore,
         validUntil: quote.validUntil,
         response: quote.aiResponse
       },
-      // URL for FDC attestation
-      fdcUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/insurance/quote?id=${quoteId}`
+      // URL for FDC attestation (ensure no double slashes)
+      fdcUrl: `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/insurance/quote?id=${quoteId}`
     });
 
   } catch (error) {
@@ -159,11 +157,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const quote = quoteStore.get(quoteId);
+    const quote = await kv.get<InsuranceQuote>(`quote:${quoteId}`)
 
     if (!quote) {
       return NextResponse.json(
-        { error: 'Quote not found' },
+        { error: 'Quote not found or expired' },
         { status: 404 }
       );
     }
@@ -177,21 +175,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Return data in format suitable for FDC Web2Json attestation
-    return NextResponse.json({
+    const response = NextResponse.json({
       quoteId: quote.id,
       requesterAddress: quote.requesterAddress,
       timestamp: quote.timestamp,
-      premium: quote.premium,
-      coverageAmount: quote.coverageAmount,
+      premium: quote.premium.toString(), // Convert to string for large numbers
+      coverageAmount: quote.coverageAmount.toString(), // Convert to string for large numbers
       riskScore: quote.riskScore,
       validUntil: quote.validUntil,
       // Include AI metadata for transparency
       aiProvider: quote.metadata.provider,
       aiModel: quote.metadata.model,
-      aiChatId: quote.metadata.chatId,
       // Hash of full response for verification
       responseHash: hashString(quote.aiResponse)
     });
+
+    // Add CORS headers for FDC verifier access
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
 
   } catch (error) {
     const err = error as Error;

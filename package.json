@@ -21,6 +21,7 @@
     "@flarenetwork/flare-periphery-contracts": "^0.1.38",
     "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
     "@openzeppelin/contracts": "^5.0.0",
+    "@vercel/kv": "^3.0.0",
     "@worldcoin/idkit": "^2.4.2",
     "clsx": "^2.1.1",
     "ethers": "^6.15.0",
@@ -29,6 +30,7 @@
     "openai": "^6.9.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "redis": "^5.10.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
