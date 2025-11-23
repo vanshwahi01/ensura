@@ -100,13 +100,20 @@ async function step2_API_is_Public() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userInput: "I need health insurance for $50k",
-        requesterAddress: "0x1290881f1d8917Cf3f61A95BEB9999dcECD0231d"
+        userInput: "I need to insure my crypto account worth $10k in ETH assets",
+        requesterAddress: "0xB7F003811aEc814f833b3A53ee9E012b9027D137"
       }),
     });
 
     if (!quoteResponse.ok) {
+      const errorText = await quoteResponse.text();
       console.log("❌ Failed to generate quote");
+      console.log("   Status:", quoteResponse.status, quoteResponse.statusText);
+      console.log("   Error:", errorText.substring(0, 200));
+      console.log("\n💡 Possible reasons:");
+      console.log("   • REDIS_URL not configured on Vercel");
+      console.log("   • AI Provider environment variables missing");
+      console.log("   • Broker service configuration issue");
       return null;
     }
 
@@ -121,7 +128,10 @@ async function step2_API_is_Public() {
     const retrieveResponse = await fetch(quoteData.fdcUrl);
     
     if (!retrieveResponse.ok) {
+      const errorText = await retrieveResponse.text();
       console.log("❌ Failed to retrieve quote");
+      console.log("   Status:", retrieveResponse.status, retrieveResponse.statusText);
+      console.log("   Error:", errorText.substring(0, 200));
       return null;
     }
 
@@ -141,6 +151,9 @@ async function step2_API_is_Public() {
     return { quoteData, retrievedQuote };
   } catch (error) {
     console.error("❌ Error:", error);
+    if (error instanceof Error) {
+      console.error("   Message:", error.message);
+    }
     return null;
   }
 }
