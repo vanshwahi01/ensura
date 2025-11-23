@@ -1,12 +1,14 @@
 import { defineConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-ethers";
-import "@nomicfoundation/hardhat-ignition-ethers";
+import hardhatEthers from "@nomicfoundation/hardhat-ethers";
+import hardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
 import hardhatVerify from "@nomicfoundation/hardhat-verify";
 import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default defineConfig({
   plugins: [
+    hardhatEthers,
+    hardhatIgnitionEthers,
     hardhatVerify,
   ],
   solidity: {
