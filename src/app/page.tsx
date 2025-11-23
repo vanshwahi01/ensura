@@ -707,7 +707,6 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                 </div>
 
                 {/* Dev Mode: Skip Button */}
-                {process.env.NODE_ENV === 'development' && (
                   <div className="text-center">
                     <Button
                       onClick={handleSkipWorldID}
@@ -718,7 +717,6 @@ Make it look like a modern, executive summary style quote - not a lengthy contra
                       Skip (Dev Only)
                     </Button>
                   </div>
-                )}
 
                 {/* Info Text */}
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
