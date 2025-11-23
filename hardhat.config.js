@@ -1,10 +1,14 @@
 import { defineConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-ignition-ethers";
+import hardhatVerify from "@nomicfoundation/hardhat-verify";
 import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default defineConfig({
+  plugins: [
+    hardhatVerify,
+  ],
   solidity: {
     version: "0.8.20",
     settings: {
@@ -33,6 +37,31 @@ export default defineConfig({
     hardhat: {
       type: "edr-simulated",
       chainId: 31337
+    }
+  },
+  // Hardhat 3 verification configuration
+  verify: {
+    etherscan: {
+      apiKey: process.env.FLARESCAN_API_KEY || "any-string-works",
+    },
+    blockscout: {
+      enabled: false
+    },
+    sourcify: {
+      enabled: false
+    }
+  },
+  // Chain descriptors for custom networks (Hardhat 3)
+  chainDescriptors: {
+    114: {
+      name: "Coston2",
+      blockExplorers: {
+        etherscan: {
+          name: "Coston2 Explorer",
+          url: "https://coston2-explorer.flare.network",
+          apiUrl: "https://coston2-explorer.flare.network/api",
+        }
+      }
     }
   },
   paths: {
