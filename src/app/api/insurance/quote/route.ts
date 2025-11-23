@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 import { getSystemPrompt } from '@/lib/aiConfig';
-import { kv } from '@vercel/kv';
 
 /**
  * Insurance Quote API Endpoint
@@ -19,8 +18,36 @@ import { kv } from '@vercel/kv';
  * GET /api/insurance/quote?id=<quoteId> - Retrieve quote for FDC attestation
  */
 
-// In-memory storage for quotes (use database in production)
+// In-memory storage for quotes (fallback when KV is not available)
 const quoteStore = new Map<string, InsuranceQuote>();
+
+// Try to import Vercel KV, use in-memory fallback if not available
+let kv: any = null;
+try {
+  const kvModule = require('@vercel/kv');
+  kv = kvModule.kv;
+} catch (e) {
+  console.log('⚠️  Vercel KV not available, using in-memory storage');
+}
+
+// Storage adapter to handle both KV and in-memory
+const storage = {
+  async set(key: string, value: any, options?: any) {
+    if (kv) {
+      return await kv.set(key, value, options);
+    } else {
+      quoteStore.set(key, value);
+      return 'OK';
+    }
+  },
+  async get<T>(key: string): Promise<T | null> {
+    if (kv) {
+      return await kv.get<T>(key);
+    } else {
+      return quoteStore.get(key) as T || null;
+    }
+  }
+};
 
 interface InsuranceQuote {
   id: string;
@@ -109,7 +136,7 @@ Format your response as a clear insurance quote that includes all pricing detail
       }
     };
 
-    await kv.set(`quote:${quoteId}`, quote, { ex: 86400 });
+    await storage.set(`quote:${quoteId}`, quote, { ex: 86400 });
 
     return NextResponse.json({
       success: true,
@@ -157,7 +184,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const quote = await kv.get<InsuranceQuote>(`quote:${quoteId}`)
+    const quote = await storage.get<InsuranceQuote>(`quote:${quoteId}`)
 
     if (!quote) {
       return NextResponse.json(
