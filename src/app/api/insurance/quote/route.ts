@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 import { getSystemPrompt } from '@/lib/aiConfig';
 
@@ -17,45 +18,6 @@ import { getSystemPrompt } from '@/lib/aiConfig';
  * POST /api/insurance/quote - Generate new quote
  * GET /api/insurance/quote?id=<quoteId> - Retrieve quote for FDC attestation
  */
-
-// In-memory storage for quotes (fallback when KV is not available)
-const quoteStore = new Map<string, InsuranceQuote>();
-
-// Check if Vercel KV environment variables are set
-const hasKVConfig = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
-
-// Import KV only if configured
-let kv: any = null;
-if (hasKVConfig) {
-  try {
-    const kvModule = require('@vercel/kv');
-    kv = kvModule.kv;
-    console.log('✅ Using Vercel KV for storage');
-  } catch (e) {
-    console.log('⚠️  Failed to load KV module, using in-memory storage');
-  }
-} else {
-  console.log('⚠️  Vercel KV not configured, using in-memory storage');
-}
-
-// Storage adapter to handle both KV and in-memory
-const storage = {
-  async set(key: string, value: any, options?: any) {
-    if (kv) {
-      return await kv.set(key, value, options);
-    } else {
-      quoteStore.set(key, value);
-      return 'OK';
-    }
-  },
-  async get<T>(key: string): Promise<T | null> {
-    if (kv) {
-      return await kv.get<T>(key);
-    } else {
-      return quoteStore.get(key) as T || null;
-    }
-  }
-};
 
 interface InsuranceQuote {
   id: string;
@@ -144,7 +106,7 @@ Format your response as a clear insurance quote that includes all pricing detail
       }
     };
 
-    await storage.set(`quote:${quoteId}`, quote, { ex: 86400 });
+    await kv.set(`quote:${quoteId}`, quote, { ex: 86400 });
 
     return NextResponse.json({
       success: true,
@@ -192,7 +154,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const quote = await storage.get<InsuranceQuote>(`quote:${quoteId}`)
+    const quote = await kv.get<InsuranceQuote>(`quote:${quoteId}`)
 
     if (!quote) {
       return NextResponse.json(

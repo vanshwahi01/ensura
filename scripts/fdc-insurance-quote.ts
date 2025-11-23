@@ -25,7 +25,7 @@ const FDC_VERIFIER_URL = process.env.WEB2JSON_VERIFIER_URL_TESTNET || "https://w
 const FDC_API_KEY = process.env.FDC_API_KEY || "";
 const DA_LAYER_URL = process.env.COSTON2_DA_LAYER_URL || "https://ctn2-data-availability.flare.network/";
 // Vercel URL for FDC attestation (publicly accessible)
-const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://ensura-alpha.vercel.app";
+const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // FDC Contract addresses on Coston2
 const FDC_HUB_ADDRESS = "0x7B0c357876670D9c0Bb1C0e62e5b33a0fc47E8F7";
