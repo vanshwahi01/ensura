@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from 'redis';
 import { brokerService, OFFICIAL_PROVIDERS } from '@/lib/brokerService';
 import { getSystemPrompt } from '@/lib/aiConfig';
 
@@ -18,16 +19,33 @@ import { getSystemPrompt } from '@/lib/aiConfig';
  * GET /api/insurance/quote?id=<quoteId> - Retrieve quote for FDC attestation
  */
 
-// In-memory storage for quotes (simple storage for local dev)
-const quoteStore = new Map<string, any>();
+// Redis client for persistent storage
+let redisClient: ReturnType<typeof createClient> | null = null;
+
+async function getRedisClient() {
+  if (!redisClient) {
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error('REDIS_URL not configured');
+    }
+    
+    redisClient = createClient({ url: redisUrl });
+    redisClient.on('error', (err) => console.error('Redis Client Error', err));
+    await redisClient.connect();
+  }
+  return redisClient;
+}
 
 const storage = {
-  async set(key: string, value: any) { 
-    quoteStore.set(key, value); 
-    return 'OK'; 
+  async set(key: string, value: any) {
+    const client = await getRedisClient();
+    await client.set(key, JSON.stringify(value), { EX: 86400 }); // 24 hour expiry
+    return 'OK';
   },
-  async get(key: string) { 
-    return quoteStore.get(key) || null; 
+  async get(key: string) {
+    const client = await getRedisClient();
+    const data = await client.get(key);
+    return data ? JSON.parse(data) : null;
   }
 };
 
