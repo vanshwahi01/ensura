@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/app/components/ui/button'
-import { Shield, Star, TrendingUp, Lock, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { Shield, Star, TrendingUp, Lock, CheckCircle2, ArrowLeft, Shuffle, Info, Eye } from 'lucide-react'
+import { EntropyDebugPanel } from '@/app/components/EntropyDebugPanel'
 
 interface Underwriter {
   id: string
@@ -99,14 +100,71 @@ export default function MarketplacePage() {
   const searchParams = useSearchParams()
   const [selectedUnderwriter, setSelectedUnderwriter] = useState<string | null>(null)
   const [isBinding, setIsBinding] = useState(false)
+  const [matchedUnderwriters, setMatchedUnderwriters] = useState<Underwriter[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [fairnessProof, setFairnessProof] = useState<{
+    randomSeed: string;
+    timestamp: number;
+    requestId: string;
+    entropySource: string;
+    method: string;
+    guarantee: string;
+  } | null>(null)
+  const [showFairnessInfo, setShowFairnessInfo] = useState(false)
+  const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [verificationData, setVerificationData] = useState<{
+    originalOrder: string[];
+    shuffledOrder: string[];
+  } | null>(null)
   
   // Get quote data from URL params
-  const insuranceType = searchParams.get('type') || 'Insurance'
+  const insuranceType = searchParams.get('type') || 'Health'
   const basePremium = parseFloat(searchParams.get('premium') || '150')
   const userName = searchParams.get('name') || 'User'
 
-  // Filter underwriters based on insurance type (for demo, show top 3-5)
-  const matchedUnderwriters = mockUnderwriters.slice(0, 5)
+  // Fetch fairly ordered underwriters using Pyth Entropy
+  useEffect(() => {
+    const fetchFairUnderwriters = async () => {
+      setIsLoading(true)
+      try {
+        console.log('🎲 Fetching fair underwriter ordering...')
+        
+        // Call our fair matching API with Pyth Entropy
+        const response = await fetch(
+          `/api/underwriters/fair-match?type=${encodeURIComponent(insuranceType)}&debug=true`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch underwriters')
+        }
+
+        const data = await response.json()
+        
+        console.log('✅ Fair underwriters received:', data)
+        console.log('📊 Fairness Proof:', data.fairnessProof)
+        console.log('🔐 Random Seed:', data.fairnessProof?.randomSeed?.substring(0, 16) + '...')
+        
+        setMatchedUnderwriters(data.underwriters)
+        setFairnessProof(data.fairnessProof)
+        setVerificationData(data.verification)
+        
+      } catch (error) {
+        console.error('❌ Error fetching fair underwriters:', error)
+        // Fallback to mock data
+        setMatchedUnderwriters(mockUnderwriters.slice(0, 5))
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchFairUnderwriters()
+  }, [insuranceType])
 
   const handleSelectUnderwriter = (underwriterId: string) => {
     setSelectedUnderwriter(underwriterId)
@@ -178,12 +236,89 @@ export default function MarketplacePage() {
             className="text-lg text-gray-600 font-light tracking-wide mb-2"
             style={{ fontFamily: "'Outfit', sans-serif" }}
           >
-            We found {matchedUnderwriters.length} underwriters for your {insuranceType}
+            {isLoading ? 'Finding fair matches...' : `We found ${matchedUnderwriters.length} underwriters for your ${insuranceType}`}
           </p>
           <p className="text-sm text-gray-500">
             Select the underwriter that best fits your needs
           </p>
         </header>
+
+        {/* Pyth Entropy Fairness Banner */}
+        {fairnessProof && (
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 mb-6 border-2 border-purple-200 opacity-0 animate-fade-in delay-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-100 rounded-full p-2">
+                  <Shuffle className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-purple-900">
+                    🎲 Fair Matching Powered by Pyth Entropy
+                  </h3>
+                  <p className="text-xs text-purple-700">
+                    Underwriters randomized for unbiased, equal exposure
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFairnessInfo(!showFairnessInfo)}
+                className="border-purple-300 text-purple-700 hover:bg-purple-100"
+              >
+                <Info className="w-4 h-4 mr-2" />
+                {showFairnessInfo ? 'Hide' : 'Show'} Proof
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDebugPanel(true)}
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Debug Panel
+              </Button>
+            </div>
+            
+            {/* Fairness Proof Details */}
+            {showFairnessInfo && (
+              <div className="mt-4 pt-4 border-t border-purple-200">
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="font-semibold text-purple-900 mb-1">Random Seed:</p>
+                    <p className="font-mono text-purple-700 break-all">
+                      {fairnessProof.randomSeed?.substring(0, 32)}...
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-purple-900 mb-1">Request ID:</p>
+                    <p className="font-mono text-purple-700 break-all">
+                      {fairnessProof.requestId}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-purple-900 mb-1">Entropy Source:</p>
+                    <p className="text-purple-700">{fairnessProof.entropySource}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-purple-900 mb-1">Timestamp:</p>
+                    <p className="text-purple-700">
+                      {new Date(fairnessProof.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-purple-100 rounded-lg">
+                  <p className="text-xs text-purple-800">
+                    <strong>Fairness Guarantee:</strong> {fairnessProof.guarantee}
+                  </p>
+                  <p className="text-xs text-purple-700 mt-1">
+                    <strong>Method:</strong> {fairnessProof.method}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Quote Summary Card */}
         <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-teal/20 mb-8 opacity-0 animate-fade-in delay-100">
@@ -201,9 +336,23 @@ export default function MarketplacePage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-teal border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-lg text-gray-600 font-semibold">
+              🎲 Shuffling underwriters with Pyth Entropy...
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Ensuring fair, unbiased ordering
+            </p>
+          </div>
+        )}
+
         {/* Underwriters Grid */}
-        <div className="space-y-4 mb-8">
-          {matchedUnderwriters.map((underwriter, index) => {
+        {!isLoading && (
+          <div className="space-y-4 mb-8">
+            {matchedUnderwriters.map((underwriter, index) => {
             const finalPremium = calculateFinalPremium(underwriter.premiumMultiplier)
             const isSelected = selectedUnderwriter === underwriter.id
             
@@ -311,8 +460,9 @@ export default function MarketplacePage() {
                 </div>
               </div>
             )
-          })}
-        </div>
+            })}
+          </div>
+        )}
 
         {/* Action Section */}
         {selectedUnderwriter && (
@@ -388,13 +538,34 @@ export default function MarketplacePage() {
         )}
 
         {/* Info Banner */}
-        <div className="mt-8 text-center opacity-0 animate-fade-in delay-400">
-          <p className="text-sm text-gray-500 font-light flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4 text-teal" />
-            All transactions are secured by smart contracts on Flare Network
-          </p>
-        </div>
+        {!isLoading && (
+          <div className="mt-8 text-center opacity-0 animate-fade-in delay-400">
+            <div className="flex items-center justify-center gap-6 text-sm text-gray-500 font-light mb-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-teal" />
+                <span>Smart contracts on Flare Network</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shuffle className="w-4 h-4 text-purple-600" />
+                <span>Fair ordering via Pyth Entropy</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">
+              Verifiable randomness ensures no bias, gaming, or preferential treatment
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* Debug Panel */}
+      <EntropyDebugPanel
+        show={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
+        fairnessProof={fairnessProof || undefined}
+        underwriters={matchedUnderwriters}
+        originalOrder={verificationData?.originalOrder}
+        shuffledOrder={verificationData?.shuffledOrder}
+      />
     </div>
   )
 }

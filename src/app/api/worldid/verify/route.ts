@@ -1,76 +1,70 @@
+"use server";
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCloudProof } from '@worldcoin/idkit-core/backend';
+import { VerificationLevel } from '@worldcoin/idkit-core';
+
+export type VerifyReply = {
+  success: boolean;
+  code?: string;
+  attribute?: string | null;
+  detail?: string;
+};
+
+interface IVerifyRequest {
+  proof: {
+    nullifier_hash: string;
+    merkle_root: string;
+    proof: string;
+    verification_level: VerificationLevel;
+  };
+  signal?: string;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { proof, merkle_root, nullifier_hash, verification_level } = await request.json();
+    const { proof, signal } = await request.json() as IVerifyRequest;
     
     console.log('🔍 Verifying World ID proof...');
+    console.log('Proof:', proof);
+    console.log('Signal:', signal);
     
     // Get app_id from environment variable
-    const app_id = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_staging_b4e6e14f3566f6e3d2f8e2a3c1b0a9d8';
-    const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verify-human';
+    const app_id = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_4020275d788fc6f5664d986dd931e5e6';
+    const action = process.env.NEXT_PUBLIC_WORLD_ACTION || 'verifyinsurance';
     
-    // For development/staging, you might want to skip actual verification
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 DEV MODE: Bypassing World ID API verification');
+    console.log('App ID:', app_id);
+    console.log('Action:', action);
+    
+    try {
+      const verifyRes = await verifyCloudProof(proof, app_id, action, signal);
+      console.log('✅ World ID verification successful:', verifyRes);
+      
       return NextResponse.json({
         success: true,
         verified: true,
-        nullifier_hash,
-        verification_level,
-        dev_mode: true
+        nullifier_hash: proof.nullifier_hash,
+        verification_level: proof.verification_level,
+        data: verifyRes
       });
-    }
-    
-    // Call World ID verification API
-    const verifyRes = await fetch(
-      `https://developer.worldcoin.org/api/v2/verify/${app_id}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nullifier_hash,
-          merkle_root,
-          proof,
-          verification_level,
-          action,
-        }),
-      }
-    );
-
-    const verifyData = await verifyRes.json();
-
-    if (!verifyRes.ok) {
-      console.error('❌ World ID verification failed:', verifyData);
+    } catch (error) {
+      console.error('❌ World ID verification failed:', error);
       return NextResponse.json(
         { 
           success: false, 
-          error: verifyData.detail || 'Verification failed',
-          code: verifyData.code,
-          details: verifyData 
+          error: 'Verification failed',
+          detail: error instanceof Error ? error.message : 'Unknown error',
+          code: 'verification_error'
         },
         { status: 400 }
       );
     }
-
-    console.log('✅ World ID verification successful');
-    
-    return NextResponse.json({
-      success: true,
-      verified: true,
-      nullifier_hash,
-      verification_level,
-      data: verifyData
-    });
   } catch (error) {
     console.error('❌ World ID verification error:', error);
     return NextResponse.json(
       { 
         success: false, 
         error: 'Server error during verification',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        detail: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
